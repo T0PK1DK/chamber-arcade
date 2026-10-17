@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHAMBER // ARCADE</title>
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23050505' stroke='%2339ff14' stroke-width='5'/%3E%3Ccircle cx='32' cy='14' r='6' fill='%23ff2222'/%3E%3C/svg%3E">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,8 +18,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
   position: relative;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
 }
 body::before {
   content: "";
@@ -75,11 +78,18 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .controls { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
 .high { margin-top: 1.5rem; font-size: .9rem; opacity: .7; }
 .disclaimer { margin-top: 2rem; font-size: .65rem; opacity: .4; max-width: 400px; }
+.record { margin-top: .4rem; font-size: .8rem; opacity: .6; letter-spacing: 1px; }
+.topbar { position: fixed; top: 10px; right: 10px; z-index: 101; }
+.topbar button { padding: 6px 10px; font-size: .8rem; box-shadow: none; }
+.turn { font-size: .85rem; opacity: .75; letter-spacing: 2px; min-height: 1.2rem; }
+.turn.ai { color: #ffcc33; text-shadow: 0 0 8px #ffcc33; opacity: 1; }
+@media (max-width: 420px) { h1 { font-size: 2.3rem; letter-spacing: 4px; } button { padding: 12px 16px; font-size: .95rem; } }
 .spinning { animation: spin .65s linear; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+<div class="topbar"><button id="muteBtn" onclick="toggleMute()" aria-label="Sound on or off">SOUND: ON</button></div>
 <div class="container">
   <h1>CHAMBER</h1>
   <div class="sub">// ARCADE ROULETTE //</div>
@@ -90,7 +100,8 @@ button:disabled { opacity: .35; cursor: not-allowed; }
       <button onclick="start('classic')">CLASSIC (odds rise)</button>
       <button onclick="start('ai')">VS AI</button>
     </div>
-    <div class="high">BEST SURVIVAL: <strong id="best">0</strong></div>
+    <div class="high">BEST STREAK — FAIR: <strong id="bestFair">0</strong> · CLASSIC: <strong id="bestClassic">0</strong></div>
+    <div class="record">VS AI RECORD: <strong id="aiRec">0-0</strong></div>
   </div>
 
   <div class="game" id="game">
@@ -104,6 +115,7 @@ button:disabled { opacity: .35; cursor: not-allowed; }
         <div class="chamber" data-i="5"></div>
       </div>
     </div>
+    <div class="turn" id="turn"></div>
     <div class="status" id="status">READY</div>
     <div class="stats">
       <span>SURVIVED: <strong id="surv">0</strong></span>
@@ -112,7 +124,8 @@ button:disabled { opacity: .35; cursor: not-allowed; }
     <div class="controls">
       <button id="spinBtn" onclick="spin()">SPIN</button>
       <button id="fireBtn" onclick="fire()" disabled>PULL</button>
-      <button onclick="menu()">MENU</button>
+      <button id="againBtn" onclick="again()" style="display:none">PLAY AGAIN</button>
+      <button id="menuBtn" onclick="menu()">MENU</button>
     </div>
   </div>
 
@@ -120,148 +133,207 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 </div>
 
 <script>
+// Modes:
+//  fair    - re-spin before every pull, always 1/6. Score = safe pulls in a row.
+//  classic - one spin, chamber advances, odds rise 1/6 -> 1/1. Score = safe pulls.
+//  ai      - one spin, shared cylinder, you and the AI take turns pulling.
+//            The chamber advances each pull, so odds rise. First to hit loses.
 let mode = 'fair';
 let bullet = -1;
 let current = 0;
-let survived = 0;
+let survived = 0;   // safe pulls this round (yours only in VS AI)
+let pulls = 0;      // pulls since the last spin (sets the odds)
 let spun = false;
 let over = false;
 let aiTurn = false;
+let busy = false;   // true while the AI is acting, locks your buttons
+let timers = [];
 
-const menuEl = document.getElementById('menu');
-const gameEl = document.getElementById('game');
-const status = document.getElementById('status');
-const survEl = document.getElementById('surv');
-const oddsLabel = document.getElementById('oddsLabel');
-const spinBtn = document.getElementById('spinBtn');
-const fireBtn = document.getElementById('fireBtn');
-const cyl = document.getElementById('cyl');
+const $ = (id) => document.getElementById(id);
+const menuEl = $('menu'), gameEl = $('game'), status = $('status'), turnEl = $('turn');
+const survEl = $('surv'), oddsLabel = $('oddsLabel');
+const spinBtn = $('spinBtn'), fireBtn = $('fireBtn'), againBtn = $('againBtn'), menuBtn = $('menuBtn');
+const cyl = $('cyl');
 const chambers = document.querySelectorAll('.chamber');
-const bestEl = document.getElementById('best');
+
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+function num(k) { return parseInt(store(k) || '0', 10) || 0; }
+
+// Old saves had one shared best; keep it as the fair best.
+if (store('chamberBest') && !store('chamberBest_fair')) store('chamberBest_fair', store('chamberBest'));
 
 function loadBest() {
-  bestEl.textContent = localStorage.getItem('chamberBest') || '0';
+  $('bestFair').textContent = num('chamberBest_fair');
+  $('bestClassic').textContent = num('chamberBest_classic');
+  $('aiRec').textContent = num('chamberAiWins') + '-' + num('chamberAiLosses');
 }
 loadBest();
+
+function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 
 function start(m) {
   mode = m;
   menuEl.classList.remove('active');
   gameEl.classList.add('active');
   resetRound();
-  status.textContent = mode === 'ai' ? 'YOUR TURN — SPIN' : 'SPIN THE CYLINDER';
 }
 
 function menu() {
+  clearTimers();
   gameEl.classList.remove('active');
   menuEl.classList.add('active');
   loadBest();
 }
 
+function again() { resetRound(); }
+
 function resetRound() {
-  bullet = -1;
-  current = 0;
-  survived = 0;
-  spun = false;
-  over = false;
-  aiTurn = false;
+  clearTimers();
+  bullet = -1; current = 0; survived = 0; pulls = 0;
+  spun = false; over = false; aiTurn = false; busy = false;
   survEl.textContent = '0';
-  updateOdds();
-  updateChambers(false);
-  fireBtn.disabled = true;
-  spinBtn.disabled = false;
   status.classList.remove('bang');
+  status.textContent = mode === 'ai' ? 'SPIN TO LOAD — YOU PULL FIRST' : 'SPIN THE CYLINDER';
+  againBtn.style.display = 'none';
+  updateOdds(); updateChambers(false); refresh();
+}
+
+function refresh() {
+  const yourMove = !over && !busy && !(mode === 'ai' && aiTurn);
+  spinBtn.disabled = !yourMove || spun;
+  fireBtn.disabled = !yourMove || !spun;
+  spinBtn.style.display = over ? 'none' : '';
+  fireBtn.style.display = over ? 'none' : '';
+  againBtn.style.display = over ? '' : 'none';
+  if (mode === 'ai' && !over) {
+    turnEl.textContent = aiTurn ? 'AI TURN' : (spun ? 'YOUR TURN' : '');
+    turnEl.classList.toggle('ai', aiTurn);
+  } else { turnEl.textContent = ''; turnEl.classList.remove('ai'); }
 }
 
 function updateOdds() {
-  if (mode === 'fair') oddsLabel.textContent = 'ODDS: 1/6';
-  else oddsLabel.textContent = `ODDS: 1/${Math.max(1, 6 - survived)}`;
+  const left = mode === 'fair' ? 6 : Math.max(1, 6 - pulls);
+  oddsLabel.textContent = 'ODDS: 1/' + left;
 }
 
 function updateChambers(reveal) {
   chambers.forEach((el, i) => {
     el.classList.remove('bullet', 'current');
     el.textContent = '';
-    if (reveal && i === bullet) {
-      el.classList.add('bullet');
-      el.textContent = '•';
-    }
+    if (reveal && i === bullet) { el.classList.add('bullet'); el.textContent = '•'; }
     if (spun && !over && i === current) el.classList.add('current');
   });
 }
 
 function spin() {
-  if (over) return;
-  cyl.classList.add('spinning');
-  setTimeout(() => cyl.classList.remove('spinning'), 650);
-  bullet = Math.floor(Math.random() * 6);
+  if (over || spun || busy) return;
+  cyl.classList.remove('spinning'); void cyl.offsetWidth; cyl.classList.add('spinning');
+  later(() => cyl.classList.remove('spinning'), 650);
+  bullet = Math.floor(Math.random() * 6); // fresh load every spin
   current = Math.floor(Math.random() * 6);
-  spun = true;
-  status.textContent = mode === 'ai' && aiTurn ? 'AI SPINNING...' : 'READY — PULL';
-  fireBtn.disabled = false;
-  spinBtn.disabled = true;
-  updateChambers(false);
-  if (mode === 'ai' && aiTurn) setTimeout(fire, 800);
+  spun = true; pulls = 0;
+  sfx.spin();
+  status.textContent = 'READY — PULL';
+  updateOdds(); updateChambers(false); refresh();
 }
 
 function fire() {
   if (!spun || over) return;
+  if (busy && !aiTurn) return;
+  const byAi = mode === 'ai' && aiTurn;
   const hit = current === bullet;
+  pulls++;
   if (hit) {
-    over = true;
-    status.textContent = mode === 'ai' && aiTurn ? 'AI HIT — YOU WIN' : 'BANG — DEAD';
+    over = true; busy = false;
     status.classList.add('bang');
     updateChambers(true);
-    play(true);
-    if (survived > (parseInt(localStorage.getItem('chamberBest') || '0'))) {
-      localStorage.setItem('chamberBest', survived);
-    }
-    fireBtn.disabled = true;
-    spinBtn.disabled = false;
-  } else {
-    survived++;
-    survEl.textContent = survived;
-    status.textContent = mode === 'ai' && aiTurn ? 'AI CLICK — YOUR TURN' : 'CLICK — SAFE';
-    play(false);
-    if (mode === 'fair') {
-      spun = false;
-      spinBtn.disabled = false;
-      fireBtn.disabled = true;
-      current = Math.floor(Math.random() * 6);
+    sfx.bang();
+    if (navigator.vibrate) { try { navigator.vibrate([60, 40, 120]); } catch (e) {} }
+    if (mode === 'ai') {
+      if (byAi) { status.textContent = 'AI HIT — YOU WIN'; store('chamberAiWins', num('chamberAiWins') + 1); }
+      else { status.textContent = 'BANG — AI WINS'; store('chamberAiLosses', num('chamberAiLosses') + 1); }
     } else {
-      current = (current + 1) % 6;
+      status.textContent = 'BANG — OUT AT ' + survived;
+      const key = 'chamberBest_' + mode;
+      if (survived > num(key)) { store(key, survived); status.textContent = 'BANG — NEW BEST: ' + survived; }
     }
-    updateOdds();
-    updateChambers(false);
-    if (mode === 'ai' && !aiTurn) {
-      aiTurn = true;
-      setTimeout(() => { spinBtn.disabled = false; spin(); }, 900);
-    } else if (mode === 'ai') {
-      aiTurn = false;
-      spinBtn.disabled = false;
-      fireBtn.disabled = true;
-    }
+    aiTurn = false;
+    refresh();
+    return;
   }
+  sfx.click();
+  if (!byAi) { survived++; survEl.textContent = survived; }
+  current = (current + 1) % 6;
+  if (mode === 'fair') {
+    spun = false; // re-spin before every pull
+    status.textContent = 'CLICK — SAFE. SPIN AGAIN';
+  } else if (mode === 'classic') {
+    status.textContent = 'CLICK — SAFE';
+  } else if (!byAi) {
+    status.textContent = 'CLICK — SAFE. AI TURN';
+    aiTurn = true; busy = true;
+    later(() => { status.textContent = 'AI PULLS...'; }, 500);
+    later(() => fire(), 1300);
+  } else {
+    status.textContent = 'AI CLICK — YOUR TURN';
+    aiTurn = false; busy = false;
+  }
+  updateOdds(); updateChambers(false); refresh();
 }
 
-function play(bang) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.connect(g); g.connect(ctx.destination);
-  if (bang) {
-    o.frequency.setValueAtTime(70, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + .35);
-    g.gain.setValueAtTime(.5, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(.01, ctx.currentTime + .45);
-    o.start(); o.stop(ctx.currentTime + .45);
-  } else {
-    o.frequency.setValueAtTime(900, ctx.currentTime);
-    g.gain.setValueAtTime(.12, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(.01, ctx.currentTime + .07);
-    o.start(); o.stop(ctx.currentTime + .07);
+// ---- sound: one shared audio context, with a mute switch ----
+const sfx = (function () {
+  let ac = null;
+  let muted = store('chamberMuted') === '1';
+  function ctx() {
+    if (muted) return null;
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+    } catch (e) { ac = null; }
+    return ac;
   }
-}
+  function tone(f0, f1, dur, vol, type) {
+    const c = ctx(); if (!c) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol) {
+    const c = ctx(); if (!c) return;
+    const n = Math.floor(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; g.gain.value = vol;
+    s.connect(g); g.connect(c.destination); s.start();
+  }
+  return {
+    get muted() { return muted; },
+    setMuted(m) { muted = m; store('chamberMuted', m ? '1' : '0'); },
+    click() { tone(900, null, 0.07, 0.12, 'square'); },
+    spin() { for (let i = 0; i < 6; i++) setTimeout(() => tone(1400, null, 0.03, 0.05, 'square'), i * 90); },
+    bang() { noise(0.5, 0.5); tone(70, 30, 0.45, 0.5); },
+  };
+})();
+
+function paintMute() { $('muteBtn').textContent = 'SOUND: ' + (sfx.muted ? 'OFF' : 'ON'); }
+function toggleMute() { sfx.setMuted(!sfx.muted); paintMute(); if (!sfx.muted) sfx.click(); }
+paintMute();
+
+document.addEventListener('keydown', (e) => {
+  if (!gameEl.classList.contains('active')) return;
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (over) again(); else if (!spinBtn.disabled) spin(); else if (!fireBtn.disabled) fire();
+  } else if (e.code === 'Escape') menu();
+});
+
+// test hook
+window.__chamber = { state: () => ({ mode, bullet, current, survived, pulls, spun, over, aiTurn, busy }) };
 </script>
 </body>
 </html>
