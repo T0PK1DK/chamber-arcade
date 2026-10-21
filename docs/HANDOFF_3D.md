@@ -46,7 +46,15 @@ The owner asked for "a real Russian roulette game … fun for the older crowd". 
   - The duel deals one `respin` per side per round. `useItem(..., 'respin')` re-rolls the load, resets the odds to 1/6 and keeps your turn. HOUSE re-spins at 1 in 3 or worse.
   - SCOPE/RACK/STUN stay in the code and tests but are not dealt.
 - **UX for older players**: an 18+ gate (saved), an A+ text toggle (saved), an 18 px base, 56–68 px buttons, a chamber dial, odds in words, How to play, C = cash out, R = re-spin.
-- **Hits**: yours is a hard cut to black plus an ear-ring tone. HOUSE's is a muzzle flash, a slump, and the revolver drops. No gore.
+- **Hits**: yours is a hard cut to black plus an ear-ring tone. HOUSE's is a muzzle flash, a slump, and the revolver drops. (Blood was added in the next pass, behind the BLOOD toggle.)
+
+## Blood + gun effects pass (owner request)
+
+- `src/scene/fx.js`: muzzle-flash sprite, smoke sprites, pooled blood droplets that stick to the felt or floor, wall and felt spatter decals (CanvasTexture), and a spreading pool. `clear()` runs on every reset.
+- `src/game/splatter.js` (pure, tested): spatter layouts plus a 2D painter, shared by the wall decal and the on-screen `#splat` canvas.
+- **BLOOD ON/OFF** in the top bar (`chamberGore`, default on). Revolver finish (`chamberFinish`: blued / nickel / gold) on the menu.
+- **Hits with blood on:** yours puts blood on the lens, then cuts to black. HOUSE's sprays out the far side, spatters the wall and felt, and pools after it slumps.
+- **Limit:** blood only. No wound modelling, dismemberment or head damage.
 
 ## Layout
 
@@ -69,6 +77,8 @@ src/scene/geometries.js    Shared buffers
 src/scene/quality.js       Mobile / adaptive DPR / reduced motion
 src/scene/framing.js       Camera per aspect ratio
 src/scene/sparks.js        Pooled spark Points
+src/scene/fx.js            Muzzle flash, smoke, blood spray / spatter / pool
+src/game/splatter.js       Spatter layout + 2D painter (Node-tested)
 src/ui/hud.js              Menu + actions + live status
 tests/*.test.js
 docs/RESEARCH.md
@@ -88,7 +98,7 @@ public/_headers            Pages cache (not a deploy)
 - Solo pot pays fair odds (One Spin: 6/(6 − n) × $100). Cash out needs ≥ 1 safe pull. A hit zeroes the pot.
 - `pull(state, 'player')` is a no-op on the house turn. Space must never resolve as `'pull'` while `aiTurn`.
 - `state.tell` is true only after HOUSE scopes a live chamber; spin / pull / rack / nextRound clear it.
-- Realistic revolver is owner-approved. Still **no gore** (your hit = cut to black), an 18+ gate, play money only, and no personal names in public text.
+- Realistic revolver and blood are owner-approved. Blood stays behind the BLOOD toggle; no wound modelling or dismemberment. Keep the 18+ gate, play money only, and no personal names in public text.
 - Static host: `npm test && npm run build` writes `dist/`. **Do not deploy** unless the owner says so.
 
 ## What is next
@@ -119,7 +129,7 @@ Rules that must not regress:
 - pull(state, 'player') must fail on the house turn. spaceAction(state) must return 'none' while HOUSE is thinking.
 - state.tell is HOUSE-only (they scoped a live chamber). Player SCOPE must not set it.
 - src/main.js must keep the dynamic import of src/scene/world.js. Game + HUD files stay Three-free.
-- Realistic revolver is owner-approved. Still **no gore** (your hit = cut to black), an 18+ gate, play money only, and no personal names in public text.
+- Realistic revolver and blood are owner-approved. Blood stays behind the BLOOD toggle; no wound modelling or dismemberment. Keep the 18+ gate, play money only, and no personal names in public text.
 - Keep it static: npm test && npm run build writes dist/.
 - Do not deploy to chamber-arcade.pages.dev unless the owner explicitly says to. The live site is still the old 2D build.
 

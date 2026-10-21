@@ -4,7 +4,7 @@
   "version": "2.1.0",
   "type": "module",
   "sideEffects": false,
-  "description": "Noir 3D Russian roulette for adults: push-your-luck pot, duel the house. Play money, no gore. Static build.",
+  "description": "Noir 3D Russian roulette for adults: push-your-luck pot, duel the house. Blood toggle, play money. Static build.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

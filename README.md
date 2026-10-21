@@ -2,7 +2,7 @@
 
 A noir **3D** Russian roulette table for adults (18+). One revolver, six chambers, one round. Push your luck for a growing pot and cash out in time, or sit across from HOUSE for a best-of-three duel.
 
-**Play money only. No gore.** When you take the round, the screen just cuts to black.
+**18+. Guns, blood and violence; play money only.** Blood can be switched off with the BLOOD button.
 
 Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.pages.dev)
 
@@ -16,6 +16,7 @@ Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.page
 
 - Three.js backroom: lamp pool on green baize, primitive-built revolver, HOUSE in a suit and fedora
 - The ritual: revolver to the temple, hammer back, heartbeat, then a dry click or a hard cut to black
+- Muzzle flash, smoke, recoil, blood spray, spatter and pooling (toggleable); blued / nickel / gold revolver
 - Best cash-out per mode and duel win–loss saved locally; 18+ gate; **A+** larger-text toggle
 - Shared `AudioContext`, mute (saved), keyboard (Space / Enter, C cash out, R re-spin, Esc, M, 1–3)
 - Phone-first HUD, capped pixel ratio, adaptive quality if the frame rate dips
