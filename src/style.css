@@ -10,6 +10,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 button, a { touch-action: manipulation; }
+html { -webkit-tap-highlight-color: transparent; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
 
 html, body {
   width: 100%;
@@ -26,7 +28,22 @@ html, body {
   width: 100%;
   height: 100%;
   display: block;
+  /* The table takes swipes and holds; no browser pan / zoom on it. */
+  touch-action: none;
 }
+
+#flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+}
+#flash.on { animation: flash 0.5s ease-out forwards; }
+#flash.bang { background: radial-gradient(ellipse at 50% 45%, rgba(255, 120, 60, 0.55), rgba(255, 40, 20, 0.25) 60%, transparent 100%); }
+#flash.safe { background: radial-gradient(ellipse at 50% 45%, rgba(57, 255, 20, 0.16), transparent 70%); animation-duration: 0.3s; }
+#flash.win { background: radial-gradient(ellipse at 50% 45%, rgba(160, 255, 120, 0.35), transparent 75%); animation-duration: 0.8s; }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 
 .boot {
   position: fixed;
@@ -136,13 +153,28 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
 
 .hud {
   margin-top: auto;
-  padding: 0 12px calc(12px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 34rem;
+  align-self: center;
+  padding: 0 12px calc(22px + env(safe-area-inset-bottom));
+  /* Legibility over the bright felt without a hard panel edge. */
+  background: linear-gradient(to bottom, transparent, rgba(3, 8, 4, 0.72) 22%, rgba(3, 8, 4, 0.85));
 }
 .banner { text-align: center; text-shadow: 0 0 10px var(--green); }
 .turn { min-height: 1.1rem; letter-spacing: 0.2em; font-size: 0.75rem; opacity: 0.75; }
 .turn.ai { color: var(--warn); opacity: 1; text-shadow: 0 0 8px var(--warn); }
 .status { font-size: clamp(1.15rem, 3.8vw, 1.5rem); min-height: 1.7rem; margin: 0.15rem 0; font-weight: 700; }
 .status.bang { color: var(--bang); text-shadow: 0 0 16px var(--bang); }
+.status.win { color: #b8ff9a; text-shadow: 0 0 18px var(--green); }
+.status.pop { animation: pop 0.32s cubic-bezier(.2, 1.6, .4, 1); }
+.status.bang.pop { animation: pop 0.32s cubic-bezier(.2, 1.6, .4, 1), jolt 0.4s steps(2) 1; }
+#surv.bump { display: inline-block; animation: bump 0.35s cubic-bezier(.2, 1.8, .4, 1); }
+#odds.warn { color: var(--warn); text-shadow: 0 0 8px var(--warn); }
+#odds.danger { color: var(--bang); text-shadow: 0 0 10px var(--bang); animation: throb 0.7s ease-in-out infinite alternate; }
+@keyframes pop { 0% { transform: scale(0.82); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes bump { 0% { transform: scale(1.7); } 100% { transform: scale(1); } }
+@keyframes jolt { 0% { transform: translateX(-4px); } 50% { transform: translateX(4px); } }
+@keyframes throb { from { opacity: 0.65; } to { opacity: 1; } }
 .match { font-size: 0.8rem; opacity: 0.75; }
 
 .stats {
@@ -169,19 +201,74 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
   background: rgba(57, 255, 20, 0.08);
 }
 .chip.empty, .empty { opacity: 0.4; font-style: normal; }
-.chip.use { cursor: pointer; }
-
-.actions, .items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+.chip.use {
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 64px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+  animation: ready 1.4s ease-in-out infinite alternate;
 }
-.items { margin-top: 8px; }
+@keyframes ready { from { box-shadow: 0 0 4px rgba(57, 255, 20, 0.2); } to { box-shadow: 0 0 14px rgba(57, 255, 20, 0.55); } }
+
+.hint {
+  text-align: center;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  opacity: 0.5;
+  min-height: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+@media (pointer: fine) { .hint { visibility: hidden; } }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.actions .side { flex: 0 0 auto; min-width: 64px; min-height: 56px; }
+/* Thumb-zone primary: one big target that morphs SPIN → PULL → NEXT. */
+.actions .primary {
+  flex: 1 1 auto;
+  min-height: 64px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  background: rgba(57, 255, 20, 0.1);
+  box-shadow: 0 0 18px rgba(57, 255, 20, 0.3), inset 0 0 14px rgba(57, 255, 20, 0.12);
+  transition: transform 0.08s ease-out, background 0.12s;
+}
+.actions .primary.pull { border-color: var(--warn); color: var(--warn); background: rgba(255, 179, 71, 0.1); box-shadow: 0 0 18px rgba(255, 179, 71, 0.3), inset 0 0 14px rgba(255, 179, 71, 0.12); }
+.actions .primary.pull:hover:not(:disabled) { background: var(--warn); color: #1a0d00; }
+.actions button:active:not(:disabled) { transform: scale(0.96); }
+
+.hold-ring {
+  position: fixed;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  pointer-events: none;
+  z-index: 7;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.1s, transform 0.12s;
+  display: grid;
+  place-items: center;
+  color: var(--warn);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 6px var(--warn);
+}
+.hold-ring.on { opacity: 1; transform: scale(1); }
+.hold-ring.full { transform: scale(1.25); opacity: 0; transition: opacity 0.25s, transform 0.25s; }
+.hold-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.hold-ring circle { fill: rgba(5, 10, 6, 0.35); stroke: rgba(255, 179, 71, 0.25); stroke-width: 5; }
+.hold-ring circle.fill { fill: none; stroke: var(--warn); stroke-dasharray: 100; stroke-dashoffset: 100; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--warn)); }
 
 .disclaimer {
   position: fixed;
-  left: 0; right: 0; bottom: 4px;
+  left: 0; right: 0; bottom: calc(4px + env(safe-area-inset-bottom));
   text-align: center;
   font-size: 0.58rem;
   opacity: 0.35;
@@ -193,9 +280,13 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
 @media (max-width: 520px) {
   .panel { margin-bottom: 3.2rem; }
   button { padding: 11px 12px; font-size: 0.9rem; }
+  .actions .primary { font-size: 1.1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   #scan { display: none; }
   button, .status, .brand strong, h1 { text-shadow: none; }
+  .status.pop, .status.bang.pop, #surv.bump, #odds.danger, .chip.use { animation: none; }
+  #flash.on { animation-duration: 0.9s; }
+  .actions button:active:not(:disabled) { transform: none; }
 }

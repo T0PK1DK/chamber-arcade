@@ -10,6 +10,7 @@ import {
   modeFromMenuKey,
   spaceAction,
 } from './game/input.js';
+import { classifyGesture, tableAction, canHoldToPull, HOLD_MS, TAP_MAX_PX } from './game/gesture.js';
 import { createHud } from './ui/hud.js';
 
 const canvas = document.getElementById('stage');
@@ -32,6 +33,13 @@ function later(ms, fn) {
 function clearTimers() {
   timers.splice(0).forEach(clearTimeout);
   audio.hush();
+  cancelHold();
+  if (world) world.setTension(0);
+}
+
+function buzz(pattern) {
+  if (!navigator.vibrate) return;
+  try { navigator.vibrate(pattern); } catch { /* ignore */ }
 }
 
 function paintScene() {
@@ -41,6 +49,7 @@ function paintScene() {
     world.dealer.setMood('idle');
     world.dealer.setTell(false);
     world.kits.paint(null);
+    world.setTurn('idle');
     return;
   }
   world.cylinder.paint({
@@ -53,6 +62,7 @@ function paintScene() {
   });
   world.dealer.setTell(state.tell);
   world.kits.paint(state);
+  world.setTurn(state.over ? 'idle' : state.mode === 'ai' && state.aiTurn ? 'house' : 'you');
 }
 
 function sync() {
@@ -72,8 +82,14 @@ function afterHit() {
   world.kick('bang');
   world.setPullCam(true);
   audio.bang();
-  if (navigator.vibrate) {
-    try { navigator.vibrate([50, 30, 90]); } catch { /* ignore */ }
+  buzz([50, 30, 90]);
+  const playerWon = state.mode === 'ai' && state.winner === 'player';
+  hud.flash(playerWon ? 'win' : 'bang');
+  if (playerWon) {
+    later(260, () => {
+      world.kick('win');
+      audio.win();
+    });
   }
   if (state.mode !== 'ai') {
     world.dealer.setMood('bang');
@@ -94,6 +110,10 @@ function afterClick(result) {
   world.kick('click');
   world.dealer.setMood(result.byAi ? 'click' : 'idle');
   audio.click();
+  if (!result.byAi) {
+    hud.flash('safe');
+    buzz(15);
+  }
   world.cylinder.setIndex(state.current);
   later(420, () => world.setPullCam(false));
   if (state.mode === 'ai' && state.aiTurn) queueAi();
@@ -106,6 +126,7 @@ function resolvePull(who) {
   }
   const result = pull(state, who);
   unlockButtons();
+  world.setTension(0);
   if (!result.ok) {
     world.setPullCam(false);
     sync();
@@ -122,9 +143,11 @@ function beginPull(who) {
   if (who === 'ai' && !canPull(state, 'ai')) return false;
   lockButtons();
   world.setPullCam(true);
+  world.setTension(who === 'ai' ? 0.7 : 0.5);
   world.dealer.setMood(state.aiTurn ? 'pull' : 'think');
   audio.tick();
-  later(380, () => resolvePull(who));
+  // HOUSE lingers a beat longer so its pull reads as a decision.
+  later(who === 'ai' ? 560 : 380, () => resolvePull(who));
   return true;
 }
 
@@ -137,6 +160,8 @@ function doSpin() {
   const result = spin(state);
   if (!result.ok) return;
   audio.spin();
+  buzz(8);
+  world.kick('spin');
   world.cylinder.kickSpin();
   world.cylinder.land(state.current);
   world.dealer.setMood('idle');
@@ -279,6 +304,82 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Table touch: swipe or tap the drum to spin, press-and-hold to pull.
+// Routing lives in game/gesture.js (Node-tested) so HOUSE's turn is safe.
+const press = { id: null, x: 0, y: 0, t: 0, raf: 0, fired: false, holding: false };
+
+function cancelHold() {
+  if (press.raf) cancelAnimationFrame(press.raf);
+  press.raf = 0;
+  press.holding = false;
+  hud.setHold(0);
+  if (world && !acting) world.setTension(0);
+}
+
+function holdTick(now) {
+  if (!press.holding) return;
+  if (!canHoldToPull(state) || acting) {
+    cancelHold();
+    return;
+  }
+  const p = Math.min(1, (now - press.t) / HOLD_MS);
+  hud.setHold(p);
+  world.setTension(p * 0.6);
+  if (p >= 1) {
+    press.fired = true;
+    press.holding = false;
+    press.raf = 0;
+    hud.setHold(1);
+    if (tableAction(state, 'hold') === 'pull') {
+      buzz(20);
+      doPull();
+    }
+    later(260, () => hud.setHold(0));
+    return;
+  }
+  press.raf = requestAnimationFrame(holdTick);
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (!state || !world || press.id !== null) return;
+  audio.unlock();
+  press.id = e.pointerId;
+  press.x = e.clientX;
+  press.y = e.clientY;
+  press.t = performance.now();
+  press.fired = false;
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  if (canHoldToPull(state) && !acting) {
+    press.holding = true;
+    hud.setHold(0.001, e.clientX, e.clientY);
+    buzz(6);
+    press.raf = requestAnimationFrame(holdTick);
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== press.id || !press.holding) return;
+  if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_MAX_PX) cancelHold();
+});
+
+function endPress(e, cancelled) {
+  if (e.pointerId !== press.id) return;
+  press.id = null;
+  const wasHolding = press.holding;
+  cancelHold();
+  if (cancelled || press.fired || !state) return;
+  const gesture = classifyGesture({
+    dx: e.clientX - press.x,
+    dy: e.clientY - press.y,
+    ms: performance.now() - press.t,
+  });
+  if (wasHolding && gesture === 'tap') return;
+  if (tableAction(state, gesture) === 'spin') doSpin();
+}
+canvas.addEventListener('pointerup', (e) => endPress(e, false));
+canvas.addEventListener('pointercancel', (e) => endPress(e, true));
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
 document.addEventListener('visibilitychange', () => {
   hidden = document.hidden;
 });
@@ -298,6 +399,10 @@ async function boot() {
   try {
     const { createWorld } = await import('./scene/world.js');
     world = createWorld(canvas);
+    world.cylinder.onLand(() => {
+      world.feel.kick('land');
+      if (state && state.spun) audio.land();
+    });
     hud.setBoot('');
     hud.setModesEnabled(true);
     requestAnimationFrame(frame);

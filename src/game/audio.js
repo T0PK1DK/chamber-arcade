@@ -98,5 +98,13 @@ export function createAudio() {
     tick() {
       tone(240, null, 0.04, 0.05, 'square');
     },
+    land() {
+      tone(1900, 900, 0.035, 0.05, 'square');
+    },
+    win() {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        later(i * 90, () => tone(f, null, 0.14, 0.08, 'square'));
+      });
+    },
   };
 }

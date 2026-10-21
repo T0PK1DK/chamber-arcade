@@ -45,7 +45,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
         <p id="match" class="match"></p>
       </div>
       <div class="stats">
-        <span>SAFE <strong id="surv">0</strong></span>
+        <span>SAFE <strong id="surv" class="pop">0</strong></span>
         <span id="odds">ODDS 1/6</span>
         <span id="round"></span>
       </div>
@@ -59,15 +59,17 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
           <div id="houseKit" class="chips"></div>
         </div>
       </div>
+      <p id="hint" class="hint" aria-hidden="true"></p>
       <div class="actions">
-        <button type="button" id="spinBtn">SPIN</button>
-        <button type="button" id="fireBtn" disabled>PULL</button>
-        <button type="button" id="nextBtn" class="hidden">NEXT ROUND</button>
-        <button type="button" id="againBtn" class="hidden">PLAY AGAIN</button>
-        <button type="button" id="menuBtn" class="ghost">MENU</button>
+        <button type="button" id="menuBtn" class="ghost side" aria-label="Menu">MENU</button>
+        <button type="button" id="spinBtn" class="primary">SPIN</button>
+        <button type="button" id="fireBtn" class="primary pull hidden" disabled>PULL</button>
+        <button type="button" id="nextBtn" class="primary hidden">NEXT ROUND</button>
+        <button type="button" id="againBtn" class="primary hidden">PLAY AGAIN</button>
       </div>
-      <div id="itemBar" class="items"></div>
     </section>
+
+    <div id="holdRing" class="hold-ring" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><circle class="fill" cx="32" cy="32" r="27" pathLength="100"/></svg><span>HOLD</span></div>
 
     <p class="disclaimer">SIMULATION ONLY — TOY DRUM — NO REAL FIREARMS.</p>
   `;
@@ -89,8 +91,11 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
   const fireBtn = $('fireBtn');
   const nextBtn = $('nextBtn');
   const againBtn = $('againBtn');
-  const itemBar = $('itemBar');
   const muteBtn = $('muteBtn');
+  const hint = $('hint');
+  const holdRing = $('holdRing');
+  const holdFill = holdRing.querySelector('.fill');
+  const flashEl = document.getElementById('flash');
 
   menu.querySelectorAll('[data-mode]').forEach((btn) => {
     btn.addEventListener('click', () => onStart(btn.dataset.mode));
@@ -110,6 +115,13 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
   }
   paintScores();
 
+  // Restart a CSS keyframe on the same element (status pop, streak bump).
+  function replay(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
   function chips(el, items, interactive) {
     el.textContent = '';
     if (!items.length) {
@@ -126,6 +138,8 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       b.title = ITEM_HINT[item] || '';
       if (interactive) {
         b.type = 'button';
+        b.classList.add('use');
+        b.setAttribute('aria-label', `${ITEM_LABEL[item]}: ${ITEM_HINT[item]}`);
         b.addEventListener('click', () => onItem(item));
       }
       el.appendChild(b);
@@ -175,11 +189,45 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       hud.classList.remove('hidden');
     },
     focusPlay,
+    /** 0 hides the ring; (0,1] shows it at the pointer, filled that far. */
+    setHold(progress, x, y) {
+      if (!progress) {
+        holdRing.classList.remove('on', 'full');
+        return;
+      }
+      if (x != null) {
+        holdRing.style.left = `${x}px`;
+        holdRing.style.top = `${y}px`;
+      }
+      holdRing.classList.add('on');
+      holdRing.classList.toggle('full', progress >= 1);
+      holdFill.style.strokeDashoffset = String(100 - Math.min(1, progress) * 100);
+    },
+    /** Full-screen tint: 'bang' | 'safe' | 'win'. CSS keeps it short. */
+    flash(kind) {
+      if (!flashEl) return;
+      flashEl.className = '';
+      void flashEl.offsetWidth;
+      flashEl.className = `on ${kind}`;
+    },
     render(state) {
-      status.textContent = state.status;
-      status.classList.toggle('bang', state.last?.type === 'hit' && state.over);
-      surv.textContent = String(state.survived);
-      odds.textContent = `ODDS 1/${oddsDenom(state)}`;
+      if (status.textContent !== state.status) {
+        status.textContent = state.status;
+        replay(status, 'pop');
+      }
+      const hit = state.last?.type === 'hit' && state.over;
+      const won = hit && state.winner === 'player';
+      status.classList.toggle('bang', hit && !won);
+      status.classList.toggle('win', won);
+      const safe = String(state.survived);
+      if (surv.textContent !== safe) {
+        surv.textContent = safe;
+        if (state.survived > 0) replay(surv, 'bump');
+      }
+      const denom = oddsDenom(state);
+      odds.textContent = `ODDS 1/${denom}`;
+      odds.classList.toggle('warn', state.spun && !state.over && denom <= 3 && denom > 1);
+      odds.classList.toggle('danger', state.spun && !state.over && denom <= 1);
 
       const ai = state.mode === 'ai';
       kits.classList.toggle('hidden', !ai);
@@ -188,7 +236,8 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       if (ai) {
         match.textContent = `YOU ${state.playerRoundWins} — ${state.aiRoundWins} HOUSE`;
         round.textContent = `R${state.round}/3`;
-        chips(youKit, state.playerItems, false);
+        const usable = !state.over && !state.matchOver && !state.busy && !state.aiTurn && state.spun;
+        chips(youKit, state.playerItems, usable);
         chips(houseKit, state.aiItems, false);
         if (!state.over && !state.aiTurn) {
           turn.textContent = state.spun ? 'YOUR TURN' : 'LOAD THE DRUM';
@@ -206,24 +255,19 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       }
 
       const playable = !state.over && !state.matchOver && !state.busy && !(ai && state.aiTurn);
+      // One big thumb button that morphs SPIN → PULL instead of two
+      // side-by-side where one is always greyed out.
+      const done = state.over || state.matchOver;
       spinBtn.disabled = !playable || state.spun;
       fireBtn.disabled = !playable || !state.spun;
-      spinBtn.classList.toggle('hidden', state.over || state.matchOver);
-      fireBtn.classList.toggle('hidden', state.over || state.matchOver);
+      spinBtn.classList.toggle('hidden', done || state.spun);
+      fireBtn.classList.toggle('hidden', done || !state.spun);
       nextBtn.classList.toggle('hidden', !(state.over && ai && !state.matchOver));
       againBtn.classList.toggle('hidden', !(state.over && (state.mode !== 'ai' || state.matchOver)));
 
-      itemBar.textContent = '';
-      if (ai && playable && state.spun && state.playerItems.length) {
-        state.playerItems.forEach((item) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'chip use';
-          b.textContent = ITEM_LABEL[item];
-          b.addEventListener('click', () => onItem(item));
-          itemBar.appendChild(b);
-        });
-      }
+      hint.textContent = !playable
+        ? ''
+        : state.spun ? 'OR HOLD THE TABLE TO PULL' : 'OR SWIPE THE DRUM TO SPIN';
     },
   };
 }

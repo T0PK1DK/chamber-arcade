@@ -12,8 +12,9 @@ export function createMaterials({ cheap = false } = {}) {
       ? new MeshLambertMaterial({ color })
       : new MeshPhongMaterial({ color, specular, shininess })
   );
-  const metal = shiny(0x4a5a4c, 0xaaffaa, 70);
-  const brass = shiny(0x7a6828, 0xffee99, 80);
+  const metal = shiny(0x4a5a4c, 0x557755, 48);
+  // Low specular: the drum cap faces the lamp, so a hot highlight whites out the whole face.
+  const brass = shiny(0x8a7228, 0x5a4a1c, 36);
   const darkMetal = shiny(0x2a302a, 0x668866, 40);
   const visor = new MeshBasicMaterial({ color: 0x6cff4a });
   const body = new MeshLambertMaterial({ color: 0x4a5c4e });

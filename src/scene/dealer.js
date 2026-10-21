@@ -26,7 +26,7 @@ export function createDealer(mats, geo) {
   const visor = new Mesh(geo.box(0.4, 0.18, 0.07), mats.visor);
   visor.position.set(0, 0.03, 0.18);
   head.add(visor);
-  const visorMat = new MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.22 });
+  const visorMat = new MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.4 });
   const visorGlow = new Mesh(geo.plane(0.46, 0.24), visorMat);
   visorGlow.position.set(0, 0.03, 0.2);
   head.add(visorGlow);
@@ -86,7 +86,7 @@ export function createDealer(mats, geo) {
         visorMat.color.setHex(0x39ff14);
         visorMat.opacity = mood === 'bang'
           ? 0.08
-          : (reducedMotion ? 0.22 : 0.18 + Math.sin(t * 3) * 0.08);
+          : (reducedMotion ? 0.4 : 0.36 + Math.sin(t * 3) * 0.1);
       }
 
       const reach = mood === 'pull' ? 0.35 : 0.12;

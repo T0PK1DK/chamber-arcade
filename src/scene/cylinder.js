@@ -39,8 +39,9 @@ export function createCylinder(mats, geo) {
     sleeve.position.set(x, y, 0);
     drum.add(sleeve);
 
+    // Sit just proud of the sleeve cap (z 0.13) so the current / live colour shows.
     const well = new Mesh(wellGeo, mats.hole);
-    well.position.set(x, y, 0.12);
+    well.position.set(x, y, 0.132);
     drum.add(well);
     holes.push(well);
   }
@@ -51,7 +52,7 @@ export function createCylinder(mats, geo) {
 
   const fireMat = new MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.95 });
   const fireGlow = new Mesh(geo.ring(0.05, 0.078, 18), fireMat);
-  fireGlow.position.set(0, 0.2, 0.13);
+  fireGlow.position.set(0, 0.2, 0.136);
   fireGlow.visible = false;
   root.add(fireGlow);
 
@@ -59,10 +60,12 @@ export function createCylinder(mats, geo) {
   plaque.position.set(0, -0.22, -0.02);
   root.add(plaque);
 
+  const baseRotX = root.rotation.x;
   let spinVel = 0;
   let target = 0;
   let spinning = false;
   let pulse = 0;
+  let onLand = null;
 
   function angleFor(index) {
     return -index * STEP;
@@ -70,6 +73,13 @@ export function createCylinder(mats, geo) {
 
   return {
     root,
+    /** World-space point at the firing hole, for sparks. */
+    muzzle(out) {
+      return fireGlow.getWorldPosition(out);
+    },
+    onLand(fn) {
+      onLand = fn;
+    },
     kickSpin() {
       spinning = true;
       spinVel = 18;
@@ -85,6 +95,10 @@ export function createCylinder(mats, geo) {
         drum.rotation.z = target;
         spinning = false;
         spinVel = 0;
+      } else {
+        // Ease one notch to the next chamber (was a no-op: target moved, drum did not).
+        spinning = true;
+        spinVel = Math.max(spinVel, 0);
       }
     },
     paint({ spun, over, current, bullet, peek, reveal }) {
@@ -97,11 +111,15 @@ export function createCylinder(mats, geo) {
         else well.material = mats.hole;
       });
     },
-    update(dt, reducedMotion = false) {
+    update(dt, reducedMotion = false, punch = 0) {
       pulse += dt;
       if (fireGlow.visible) {
         fireMat.opacity = reducedMotion ? 0.85 : 0.55 + Math.sin(pulse * 7) * 0.35;
       }
+      // Punch: a quick squash-pop and a recoil tilt toward the player.
+      const s = 1 + punch * 0.07;
+      root.scale.set(s, s, 1 - punch * 0.05);
+      root.rotation.x = baseRotX - punch * 0.12;
       if (!spinning) return;
       if (reducedMotion) {
         drum.rotation.z = target;
@@ -117,6 +135,7 @@ export function createCylinder(mats, geo) {
         if (Math.abs(err) < 0.02 && spinVel < 0.4) {
           drum.rotation.z = target;
           spinning = false;
+          if (onLand) onLand();
         }
       }
     },

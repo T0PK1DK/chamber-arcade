@@ -14,6 +14,9 @@ test('game + HUD stay Three-free so the table can lazy-load', () => {
     'src/game/storage.js',
     'src/game/input.js',
     'src/game/math.js',
+    'src/game/feel.js',
+    'src/game/gesture.js',
+    'src/scene/framing.js',
     'src/ui/hud.js',
     'src/main.js',
   ];

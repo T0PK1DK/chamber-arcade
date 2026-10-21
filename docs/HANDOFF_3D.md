@@ -26,6 +26,15 @@ Add-ons only. The PR #2 table, modes, and chips stayed.
 - **Tests**
   - `npm test` covers rules, input, HOUSE brain, storage, quality, and “game JS stays Three-free.”
 
+## Polish pass (lighting, juice, touch)
+
+Played Fair / Classic / VS HOUSE at 390×844 and 1280×800 (local `vite preview`; the live site is still 2D).
+
+- **Fixed**: portrait camera cropped HOUSE (aspect-aware framing in `src/scene/framing.js`); hole wells were buried inside the sleeves so current / live chambers never showed; `cylinder.setIndex(i)` never eased the drum after a safe pull; a round win showed in red.
+- **Lighting**: SpotLight lamp pool (one shadow map on desktop, not a point light's six), hemisphere ambient, low-specular brass, dimmer wall CRT, neon rim follows the turn (green you / amber HOUSE / red hit). A zero-intensity hit light is always present so the light count never changes.
+- **Juice** (`src/game/feel.js`, Node-tested): trauma² shake, 90 ms hit-stop, drum punch, FOV kick, pooled sparks (`src/scene/sparks.js`, one draw call), screen flash, status pop, streak bump, odds turns amber then red, win jingle, landing clack. Reduced motion keeps only a soft flash.
+- **Touch** (`src/game/gesture.js`, Node-tested): tap or swipe the table to spin, press and hold to pull (fill ring). Tap never pulls; nothing pulls on the HOUSE turn. One big morphing thumb button, kit chips are tappable (44 px+), haptics on spin / safe / hit.
+
 ## Layout
 
 ```
@@ -37,12 +46,16 @@ src/game/audio.js          WebAudio tones + hush()
 src/game/storage.js        localStorage
 src/game/input.js          Keyboard routing (Node-tested)
 src/game/math.js           shortestAngle
+src/game/feel.js           Shake / hit-stop / punch envelopes
+src/game/gesture.js        Table tap / swipe / hold routing
 src/scene/world.js         Renderer, room, lights (lazy)
 src/scene/cylinder.js      Drum + hole highlight
 src/scene/dealer.js        HOUSE rig + tell
 src/scene/kits.js          3D chip tokens
 src/scene/geometries.js    Shared buffers
 src/scene/quality.js       Mobile / adaptive DPR / reduced motion
+src/scene/framing.js       Camera per aspect ratio
+src/scene/sparks.js        Pooled spark Points
 src/ui/hud.js              Menu + actions + live status
 tests/*.test.js
 docs/RESEARCH.md
