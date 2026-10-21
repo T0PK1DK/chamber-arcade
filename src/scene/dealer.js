@@ -6,26 +6,32 @@ import * as THREE from 'three';
  */
 export function createDealer(mats) {
   const root = new THREE.Group();
-  root.position.set(0, 0.0, -1.05);
+  root.position.set(0, 0.0, -0.92);
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.7, 0.36), mats.body);
-  torso.position.set(0, 1.12, 0);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.78, 0.4), mats.body);
+  torso.position.set(0, 1.16, 0);
   root.add(torso);
 
-  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.4), mats.accent);
-  collar.position.set(0, 1.48, 0);
+  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.1, 0.44), mats.accent);
+  collar.position.set(0, 1.56, 0);
   root.add(collar);
 
   const head = new THREE.Group();
-  head.position.set(0, 1.78, 0.04);
+  head.position.set(0, 1.88, 0.06);
   root.add(head);
 
-  const skull = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.36, 0.32), mats.body);
+  const skull = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.4, 0.36), mats.body);
   head.add(skull);
 
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.06), mats.visor);
-  visor.position.set(0, 0.02, 0.16);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.07), mats.visor);
+  visor.position.set(0, 0.03, 0.18);
   head.add(visor);
+  const visorGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.46, 0.24),
+    new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.22 }),
+  );
+  visorGlow.position.set(0, 0.03, 0.2);
+  head.add(visorGlow);
 
   const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6), mats.metal);
   antenna.position.set(0.14, 0.28, 0);
@@ -55,8 +61,8 @@ export function createDealer(mats) {
       shake = Math.max(0, shake - dt * 2.2);
       nod = Math.max(0, nod - dt * 1.8);
       const breathe = Math.sin(t * 1.6) * 0.012;
-      torso.position.y = 1.12 + breathe;
-      head.position.y = 1.78 + breathe * 1.4;
+      torso.position.y = 1.16 + breathe;
+      head.position.y = 1.88 + breathe * 1.4;
 
       const lean = mood === 'think' || mood === 'pull' ? 0.18 : mood === 'win' ? -0.06 : 0.04;
       root.rotation.x += (lean - root.rotation.x) * Math.min(1, dt * 4);
@@ -65,9 +71,9 @@ export function createDealer(mats) {
       head.rotation.y = Math.sin(t * 0.5) * 0.08 + (Math.random() - 0.5) * shake * 0.04;
       head.rotation.z = (Math.random() - 0.5) * shake * 0.2;
 
-      visor.material.emissiveIntensity = mood === 'bang'
-        ? 0.3
-        : 0.85 + Math.sin(t * 3) * 0.2;
+      visorGlow.material.opacity = mood === 'bang'
+        ? 0.08
+        : 0.18 + Math.sin(t * 3) * 0.08;
 
       const reach = mood === 'pull' ? 0.35 : 0.12;
       armL.fore.rotation.x += (-0.4 - reach - armL.fore.rotation.x) * Math.min(1, dt * 5);

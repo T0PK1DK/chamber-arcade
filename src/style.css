@@ -34,12 +34,11 @@ html, body {
   z-index: 4;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.16),
-    rgba(0, 0, 0, 0.16) 1px,
+    rgba(0, 0, 0, 0.08),
+    rgba(0, 0, 0, 0.08) 1px,
     transparent 1px,
-    transparent 3px
+    transparent 4px
   );
-  mix-blend-mode: multiply;
 }
 
 #vignette {
@@ -72,16 +71,16 @@ html, body {
 
 .panel {
   display: none;
-  margin: auto 1rem 4.5rem;
-  max-width: 28rem;
+  margin: auto 1rem 3.6rem;
+  max-width: 26rem;
   width: calc(100% - 2rem);
   align-self: center;
   text-align: center;
-  padding: 1.4rem 1.1rem 1.2rem;
-  border: 1px solid rgba(57, 255, 20, 0.35);
-  background: rgba(5, 10, 6, 0.78);
-  box-shadow: 0 0 40px rgba(57, 255, 20, 0.12);
-  backdrop-filter: blur(6px);
+  padding: 1.1rem 1rem 1rem;
+  border: 1px solid rgba(57, 255, 20, 0.45);
+  background: rgba(5, 10, 6, 0.62);
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.16);
+  backdrop-filter: blur(5px);
 }
 .panel.active { display: block; }
 
@@ -127,7 +126,7 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
 .banner { text-align: center; text-shadow: 0 0 10px var(--green); }
 .turn { min-height: 1.1rem; letter-spacing: 0.2em; font-size: 0.75rem; opacity: 0.75; }
 .turn.ai { color: var(--warn); opacity: 1; text-shadow: 0 0 8px var(--warn); }
-.status { font-size: clamp(1rem, 3.4vw, 1.35rem); min-height: 1.7rem; margin: 0.15rem 0; }
+.status { font-size: clamp(1.15rem, 3.8vw, 1.5rem); min-height: 1.7rem; margin: 0.15rem 0; font-weight: 700; }
 .status.bang { color: var(--bang); text-shadow: 0 0 16px var(--bang); }
 .match { font-size: 0.8rem; opacity: 0.75; }
 
@@ -135,8 +134,8 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
   display: flex;
   justify-content: space-around;
   margin: 0.55rem 0;
-  font-size: 0.8rem;
-  opacity: 0.85;
+  font-size: 0.92rem;
+  opacity: 0.95;
 }
 
 .kits {

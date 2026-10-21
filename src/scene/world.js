@@ -14,28 +14,28 @@ export function createWorld(canvas) {
     alpha: false,
     powerPreference: 'high-performance',
   });
-  renderer.setClearColor(0x040604, 1);
+  renderer.setClearColor(0x08110a, 1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.2;
   renderer.shadowMap.enabled = quality.shadows;
   renderer.shadowMap.type = THREE.BasicShadowMap;
   quality.apply(renderer);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x040604, 3.4, 10);
+  scene.fog = new THREE.Fog(0x08110a, 7, 16);
 
-  const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 24);
-  const camHome = new THREE.Vector3(0, 1.42, 2.55);
-  const camPull = new THREE.Vector3(0, 1.28, 1.85);
+  const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 24);
+  const camHome = new THREE.Vector3(0, 1.52, 2.85);
+  const camPull = new THREE.Vector3(0, 1.32, 2.05);
   camera.position.copy(camHome);
-  const look = new THREE.Vector3(0, 0.95, -0.1);
+  const look = new THREE.Vector3(0, 1.02, -0.15);
   camera.lookAt(look);
 
-  const ambient = new THREE.AmbientLight(0x1c3a22, 0.55);
+  const ambient = new THREE.AmbientLight(0x4a7a52, 1.05);
   scene.add(ambient);
-  const lamp = new THREE.PointLight(0xffe6b0, 18, 8, 2);
-  lamp.position.set(0, 2.35, 0.1);
+  const lamp = new THREE.PointLight(0xffe6b0, 32, 10, 1.6);
+  lamp.position.set(0, 2.35, 0.15);
   lamp.castShadow = quality.shadows;
   if (quality.shadows) {
     lamp.shadow.mapSize.set(512, 512);
@@ -43,12 +43,15 @@ export function createWorld(canvas) {
     lamp.shadow.camera.far = 6;
   }
   scene.add(lamp);
-  const rim = new THREE.PointLight(0x39ff14, 6, 7, 2);
-  rim.position.set(0.8, 1.6, 1.4);
+  const rim = new THREE.PointLight(0x39ff14, 14, 8, 1.8);
+  rim.position.set(0.9, 1.7, 1.5);
   scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x88aa88, 0.25);
-  fill.position.set(-2, 3, 2);
+  const fill = new THREE.DirectionalLight(0xb0d0b0, 0.55);
+  fill.position.set(-2.2, 3.2, 2.2);
   scene.add(fill);
+  const backFill = new THREE.PointLight(0x39ff14, 8, 6, 2);
+  backFill.position.set(0, 1.8, -1.6);
+  scene.add(backFill);
 
   buildRoom(scene, mats, quality.shadows);
   const cylinder = createCylinder(mats);
@@ -97,8 +100,8 @@ export function createWorld(canvas) {
       pullBlend += (wantedPull - pullBlend) * Math.min(1, dt * 4);
       shake = Math.max(0, shake - dt * 3.2);
       bangFlash = Math.max(0, bangFlash - dt * 2.4);
-      lamp.intensity = 18 - bangFlash * 8 + Math.sin(now * 0.002) * 0.4;
-      rim.intensity = 5.5 + bangFlash * 10;
+      lamp.intensity = 32 - bangFlash * 10 + Math.sin(now * 0.002) * 0.5;
+      rim.intensity = 12 + bangFlash * 10;
 
       camera.position.lerpVectors(camHome, camPull, pullBlend);
       camera.position.x += (Math.random() - 0.5) * shake * 0.08;
@@ -143,12 +146,17 @@ function buildRoom(scene, mats, shadows) {
   felt.position.set(0, 0.83, -0.05);
   scene.add(felt);
 
-  const rimGeo = new THREE.BoxGeometry(2.32, 0.03, 0.04);
+  const rimGeo = new THREE.BoxGeometry(2.36, 0.05, 0.06);
   const rimF = new THREE.Mesh(rimGeo, mats.neon);
-  rimF.position.set(0, 0.83, 0.64);
+  rimF.position.set(0, 0.84, 0.66);
   const rimB = rimF.clone();
-  rimB.position.z = -0.74;
-  scene.add(rimF, rimB);
+  rimB.position.z = -0.76;
+  const rimSideGeo = new THREE.BoxGeometry(0.06, 0.05, 1.42);
+  const rimL = new THREE.Mesh(rimSideGeo, mats.neon);
+  rimL.position.set(-1.16, 0.84, -0.05);
+  const rimR = rimL.clone();
+  rimR.position.x = 1.16;
+  scene.add(rimF, rimB, rimL, rimR);
 
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
@@ -168,4 +176,11 @@ function buildRoom(scene, mats, shadows) {
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.4, 0.18), mats.accent);
   post.position.set(-1.7, 0.7, -1.6);
   scene.add(post);
+
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.9), mats.visor);
+  screen.position.set(0, 2.15, -2.15);
+  scene.add(screen);
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.1, 0.08), mats.darkMetal);
+  bezel.position.set(0, 2.15, -2.2);
+  scene.add(bezel);
 }
