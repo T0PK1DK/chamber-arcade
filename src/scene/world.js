@@ -18,7 +18,7 @@ import {
 } from 'three';
 import { createMaterials } from './materials.js';
 import { createGeometries } from './geometries.js';
-import { createCylinder } from './cylinder.js';
+import { createRevolver } from './revolver.js';
 import { createDealer } from './dealer.js';
 import { createKits } from './kits.js';
 import { createQuality } from './quality.js';
@@ -26,9 +26,11 @@ import { createSparks } from './sparks.js';
 import { framing } from './framing.js';
 import { createFeel } from '../game/feel.js';
 
-const GREEN = 0x39ff14;
-const AMBER = 0xffa630;
-const HIT = 0xff4a2a;
+// Turn tint on the brass table trim: warm brass on yours, ember on HOUSE's.
+const BRASS = 0xd8b25a;
+const EMBER = 0xb8562c;
+const MUZZLE = 0xffb060;
+const ROOM = 0x0b0807;
 
 export function createWorld(canvas) {
   const quality = createQuality();
@@ -44,7 +46,7 @@ export function createWorld(canvas) {
     stencil: false,
     depth: true,
   });
-  renderer.setClearColor(0x08110a, 1);
+  renderer.setClearColor(ROOM, 1);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -54,7 +56,8 @@ export function createWorld(canvas) {
   quality.attachOverlay(document.getElementById('scan'));
 
   const scene = new Scene();
-  scene.fog = new Fog(0x08110a, quality.mobile ? 6 : 7, quality.mobile ? 13 : 16);
+  // Low, warm haze like a smoky back room.
+  scene.fog = new Fog(ROOM, quality.mobile ? 5 : 6, quality.mobile ? 12 : 14);
 
   const camera = new PerspectiveCamera(44, 1, 0.1, 24);
   const camHome = new Vector3();
@@ -63,15 +66,16 @@ export function createWorld(canvas) {
   const look = new Vector3();
   let baseFov = 44;
 
-  // Lighting: a dark room, one warm lamp pool on the felt, cool green bounce.
+  // Lighting: a dark room and one warm lamp pool on the felt.
   // Hemisphere replaces the flat ambient so tops read lighter than undersides.
-  const hemi = new HemisphereLight(0x5f9a68, 0x0a120b, quality.mobile ? 1.5 : 1.15);
+  const hemi = new HemisphereLight(0x8a7058, 0x0c0806, quality.mobile ? 1.3 : 1.0);
   scene.add(hemi);
   // Desktop adds fill + rim and Phong highlights, so its lamp runs cooler.
   const lampBase = quality.extraLights ? 18 : 26;
-  const lamp = new SpotLight(0xffd8a0, lampBase, 6, 0.78, 0.6, 1.4);
+  // Wide enough to catch HOUSE's shoulders and tie as well as the felt.
+  const lamp = new SpotLight(0xffd8a0, lampBase, 6, 0.98, 0.65, 1.4);
   lamp.position.set(0, 2.3, 0.1);
-  lamp.target.position.set(0, 0.8, 0.05);
+  lamp.target.position.set(0, 0.8, -0.2);
   lamp.castShadow = quality.shadows;
   if (quality.shadows) {
     // One spot shadow map instead of the point light's six cube faces.
@@ -83,9 +87,9 @@ export function createWorld(canvas) {
   }
   scene.add(lamp, lamp.target);
 
-  // Hit flash at the drum. Always present (intensity 0 at rest) so the
-  // shader light count never changes and nothing recompiles mid-game.
-  const flashLight = new PointLight(HIT, 0, 4, 2);
+  // Muzzle flash. Always present (intensity 0 at rest) so the shader
+  // light count never changes and nothing recompiles mid-game.
+  const flashLight = new PointLight(MUZZLE, 0, 4, 2);
   flashLight.position.set(0, 1.25, 0.55);
   scene.add(flashLight);
 
@@ -93,37 +97,38 @@ export function createWorld(canvas) {
   let rim = null;
   let backFill = null;
   if (quality.extraLights) {
-    fill = new DirectionalLight(0xc8e0c8, 0.22);
+    fill = new DirectionalLight(0xe0d0b8, 0.22);
     fill.position.set(-2.2, 3.2, 2.2);
     scene.add(fill);
-    // Edge light from the side, kept low: up close it whitened the brass drum face.
-    rim = new PointLight(GREEN, 2.5, 6, 1.8);
+    // Edge light from the side, kept low so the steel reads but does not glare.
+    rim = new PointLight(BRASS, 2.5, 6, 1.8);
     rim.position.set(1.6, 1.5, 0.9);
     scene.add(rim);
-    // Back-light behind HOUSE so the robot silhouettes off the wall.
-    backFill = new PointLight(GREEN, 5, 4, 2);
+    // Back-light behind HOUSE so the hat and shoulders silhouette off the wall.
+    backFill = new PointLight(0xffb070, 4, 4, 2);
     backFill.position.set(0, 1.9, -1.55);
     scene.add(backFill);
   }
 
   const props = buildRoom(scene, mats, geo, quality);
-  const cylinder = createCylinder(mats, geo);
+  const gun = createRevolver(mats, geo);
   const dealer = createDealer(mats, geo);
   const kits = createKits(mats, geo);
   const sparks = createSparks();
-  scene.add(cylinder.root, dealer.root, kits.root, sparks.root);
+  scene.add(gun.root, dealer.root, kits.root, sparks.root);
   if (quality.shadows) {
-    // Drum and HOUSE drop soft shadows into the lamp pool (desktop only).
-    for (const r of [cylinder.root, dealer.root]) {
+    // Revolver and HOUSE drop soft shadows into the lamp pool (desktop only).
+    for (const r of [gun.root, dealer.root]) {
       r.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     }
   }
 
   const feel = createFeel({ calm: quality.reducedMotion });
   const muzzle = new Vector3();
-  const turnColor = new Color(GREEN);
-  const wantColor = new Color(GREEN);
-  const hitColor = new Color(HIT);
+  const turnColor = new Color(BRASS);
+  const wantColor = new Color(BRASS);
+  const hitColor = new Color(MUZZLE);
+  const tableSpot = new Vector3(0, 0.95, 0.1);
   let pullBlend = 0;
   let wantedPull = 0;
   let tension = 0;
@@ -158,7 +163,7 @@ export function createWorld(canvas) {
     renderer,
     scene,
     camera,
-    cylinder,
+    gun,
     dealer,
     kits,
     quality,
@@ -174,27 +179,36 @@ export function createWorld(canvas) {
     },
     /** 'you' | 'house' | 'idle' — tints the neon table rim and the wall screen. */
     setTurn(who) {
-      wantColor.setHex(who === 'house' ? AMBER : GREEN);
+      wantColor.setHex(who === 'house' ? EMBER : BRASS);
     },
     kick(kind) {
-      feel.kick(kind);
-      if (feel.calm) return;
+      feel.kick(kind === 'cash' ? 'win' : kind);
       if (kind === 'bang') {
-        sparks.burst(cylinder.muzzle(muzzle), 0xffb040, 26, 2.2);
-        sparks.burst(muzzle, HIT, 22, 1.6);
-      } else if (kind === 'click') {
-        sparks.burst(cylinder.muzzle(muzzle), GREEN, 10, 0.9);
-      } else if (kind === 'win') {
-        sparks.burst(cylinder.muzzle(muzzle), GREEN, 30, 2.4);
-        sparks.burst(muzzle, 0xb8ff9a, 18, 1.8);
+        gun.muzzle(muzzle);
+        flashLight.position.copy(muzzle);
+        // Muzzle flash only; no gore. Skipped when the gun is at your own
+        // temple (the screen cuts to black instead).
+        if (!feel.calm && gun.pose !== 'player') {
+          sparks.burst(muzzle, 0xfff0b0, 18, 1.4);
+          sparks.burst(muzzle, MUZZLE, 16, 0.9);
+        }
+      } else if ((kind === 'win' || kind === 'cash') && !feel.calm) {
+        // Gold chips scatter across the felt.
+        sparks.burst(tableSpot, 0xffd36a, 34, 2.2);
+        sparks.burst(tableSpot, 0xfff0c0, 16, 1.6);
       }
+    },
+    /** 'table' | 'player' | 'house' */
+    setGunPose(pose) {
+      gun.setPose(pose);
+      dealer.setAim(pose === 'house');
     },
     update(dt, now) {
       const calm = quality.reducedMotion;
       quality.sample(dt, renderer, now);
       // Hit-stop: envelopes keep decaying, the table freezes for a beat.
       const sim = feel.step(dt);
-      cylinder.update(sim, calm, feel.punch);
+      // (gun updates after the camera moves; it can ride in camera space.)
       dealer.update(sim, calm);
       sparks.update(sim);
       if (!calm) pullBlend += (wantedPull - pullBlend) * Math.min(1, sim * 4);
@@ -215,13 +229,10 @@ export function createWorld(canvas) {
 
       turnColor.lerp(wantColor, Math.min(1, dt * 6));
       props.rimMat.color.copy(turnColor).lerp(hitColor, Math.min(1, flash * 1.4));
-      props.screen.material.color.copy(turnColor).multiplyScalar(0.55);
-      props.screen.material.opacity = calm ? 0.5 : 0.42 + Math.sin(now * 0.006) * 0.08 + flash * 0.3;
+      props.screen.material.opacity = 0.9;
       if (rim) {
-        rim.color.copy(turnColor);
         rim.intensity = 2.5 + flash * 10 + tension * 3;
       }
-      if (backFill) backFill.color.copy(turnColor);
 
       camPos.lerpVectors(camHome, camPull, pullBlend);
       const shake = feel.shake;
@@ -234,6 +245,8 @@ export function createWorld(canvas) {
       }
       camera.position.copy(camPos);
       camera.lookAt(look);
+      camera.updateMatrixWorld();
+      gun.update(sim, calm, feel.punch, camera);
       const fov = baseFov - feel.fov * 5 - tension * 2.5;
       if (Math.abs(camera.fov - fov) > 0.01) {
         camera.fov = fov;
@@ -249,7 +262,7 @@ export function createWorld(canvas) {
       window.removeEventListener('resize', resize);
       if (window.visualViewport) window.visualViewport.removeEventListener('resize', resize);
       renderer.dispose();
-      cylinder.dispose();
+      gun.dispose();
       dealer.dispose();
       sparks.dispose();
       props.screen.material.dispose();
@@ -293,8 +306,8 @@ function buildRoom(scene, mats, geo, quality) {
   felt.receiveShadow = shadows;
   scene.add(felt);
 
-  // Own material so the rim can follow the turn colour without tinting the drum marker.
-  const rimMat = new MeshBasicMaterial({ color: GREEN });
+  // Own material so the brass trim can follow the turn colour on its own.
+  const rimMat = new MeshBasicMaterial({ color: BRASS });
   const rimGeo = geo.box(2.36, 0.05, 0.06);
   const rimF = new Mesh(rimGeo, rimMat);
   rimF.position.set(0, 0.84, 0.66);
@@ -330,15 +343,15 @@ function buildRoom(scene, mats, geo, quality) {
   post.position.set(-1.7, 0.7, -1.6);
   scene.add(post);
 
-  // Wall CRT sits higher and dimmer so HOUSE's head reads against it, not into it.
-  const screen = new Mesh(geo.plane(1.8, 0.9), mats.visor);
-  screen.position.set(0, 2.75, -2.15);
+  // A dark oil painting in a gilt frame, high on the wall behind HOUSE.
+  const screen = new Mesh(geo.plane(0.9, 0.62), mats.visor);
+  screen.position.set(-1.25, 2.2, -2.15);
   screen.material = mats.visor.clone();
   screen.material.transparent = true;
-  screen.material.opacity = 0.45;
+  screen.material.opacity = 0.9;
   scene.add(screen);
-  const bezel = new Mesh(geo.box(2.0, 1.1, 0.08), mats.darkMetal);
-  bezel.position.set(0, 2.75, -2.2);
+  const bezel = new Mesh(geo.box(1.02, 0.74, 0.06), mats.neon);
+  bezel.position.set(-1.25, 2.2, -2.2);
   scene.add(bezel);
 
   return { shade, bulb, cord, screen, rimMat };

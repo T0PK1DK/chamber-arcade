@@ -70,3 +70,11 @@ test('modifier helpers', () => {
   assert.equal(isMuteKey('KeyM'), true);
   assert.equal(isMuteKey('KeyN'), false);
 });
+
+test('C cashes out and R re-spins; nothing else maps to them', async () => {
+  const { isCashKey, isRespinKey } = await import('../src/game/input.js');
+  assert.equal(isCashKey('KeyC'), true);
+  assert.equal(isCashKey('Space'), false);
+  assert.equal(isRespinKey('KeyR'), true);
+  assert.equal(isRespinKey('KeyC'), false);
+});

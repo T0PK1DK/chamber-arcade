@@ -80,17 +80,41 @@ export function createAudio() {
     unlock() {
       ac();
     },
+    /** Dry fire: hammer falls on an empty chamber. */
     click() {
-      tone(880, null, 0.07, 0.1, 'square');
+      noise(0.03, 0.35);
+      tone(2400, 1200, 0.03, 0.12, 'square');
+      tone(180, null, 0.05, 0.08, 'triangle');
     },
+    /** Hammer drawn back: two-stage ratchet. */
+    cock() {
+      tone(1700, 900, 0.025, 0.07, 'square');
+      later(110, () => {
+        noise(0.025, 0.2);
+        tone(2100, 1100, 0.03, 0.09, 'square');
+      });
+    },
+    heartbeat() {
+      tone(62, 44, 0.12, 0.35, 'sine');
+      later(170, () => tone(56, 40, 0.14, 0.28, 'sine'));
+    },
+    cash() {
+      [1568, 2093].forEach((f, i) => later(i * 70, () => tone(f, null, 0.18, 0.07, 'triangle')));
+      later(170, () => noise(0.12, 0.12));
+    },
+    /** Cylinder freewheel: a ratchet that slows down. */
     spin() {
-      for (let i = 0; i < 6; i += 1) {
-        later(i * 85, () => tone(1300 + i * 40, null, 0.03, 0.045, 'square'));
+      let t = 0;
+      for (let i = 0; i < 12; i += 1) {
+        t += 45 + i * 9;
+        later(t, () => tone(1500 - i * 25, null, 0.02, 0.05, 'square'));
       }
     },
-    bang() {
-      noise(0.42, 0.42);
-      tone(90, 36, 0.4, 0.4);
+    /** self = it was your pull: the report, then a long high ear-ring. */
+    bang(self = false) {
+      noise(0.5, 0.55);
+      tone(90, 30, 0.5, 0.5);
+      if (self) later(60, () => tone(3900, 3600, 2.6, 0.035, 'sine'));
     },
     item() {
       tone(520, 880, 0.12, 0.08, 'triangle');

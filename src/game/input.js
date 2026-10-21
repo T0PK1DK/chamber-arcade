@@ -38,3 +38,12 @@ export function isMenuKey(code) {
 export function isPrimaryKey(code) {
   return code === 'Space' || code === 'Enter';
 }
+
+export function isCashKey(code) {
+  return code === 'KeyC';
+}
+
+/** R re-spins in the duel (same as pressing 1 while you hold the re-spin). */
+export function isRespinKey(code) {
+  return code === 'KeyR';
+}

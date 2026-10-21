@@ -1,10 +1,23 @@
-import { createMatch, resetMatch, spin, pull, useItem, nextRound, canSpin, canPull } from './game/logic.js';
+import {
+  ITEMS,
+  createMatch,
+  resetMatch,
+  spin,
+  pull,
+  useItem,
+  nextRound,
+  canSpin,
+  canPull,
+  cashOut,
+} from './game/logic.js';
 import { decideAi } from './game/ai.js';
 import { createAudio } from './game/audio.js';
-import { saveBest, recordAiMatch } from './game/storage.js';
+import { saveBestCash, recordAiMatch } from './game/storage.js';
 import {
   itemFromDigit,
+  isCashKey,
   isMenuKey,
+  isRespinKey,
   isMuteKey,
   isPrimaryKey,
   modeFromMenuKey,
@@ -45,21 +58,12 @@ function buzz(pattern) {
 function paintScene() {
   if (!world) return;
   if (!state) {
-    world.cylinder.paint({ spun: false, over: false, current: 0, bullet: -1, peek: null, reveal: false });
     world.dealer.setMood('idle');
     world.dealer.setTell(false);
     world.kits.paint(null);
     world.setTurn('idle');
     return;
   }
-  world.cylinder.paint({
-    spun: state.spun,
-    over: state.over,
-    current: state.current,
-    bullet: state.bullet,
-    peek: state.peek,
-    reveal: state.over && state.last?.type === 'hit',
-  });
   world.dealer.setTell(state.tell);
   world.kits.paint(state);
   world.setTurn(state.over ? 'idle' : state.mode === 'ai' && state.aiTurn ? 'house' : 'you');
@@ -78,32 +82,34 @@ function unlockButtons() {
   acting = false;
 }
 
-function afterHit() {
+function afterHit(result) {
   world.kick('bang');
-  world.setPullCam(true);
-  audio.bang();
-  buzz([50, 30, 90]);
-  const playerWon = state.mode === 'ai' && state.winner === 'player';
-  hud.flash(playerWon ? 'win' : 'bang');
-  if (playerWon) {
-    later(260, () => {
+  buzz([60, 30, 120]);
+  if (!result.byAi) {
+    // You took the round: hard cut to black and a ringing ear. Nothing shown.
+    audio.bang(true);
+    hud.blackout(1700);
+    world.dealer.setMood(state.mode === 'ai' ? 'win' : 'idle');
+    later(1750, () => {
+      world.setGunPose('table');
+      world.setPullCam(false);
+    });
+  } else {
+    // HOUSE took the round: muzzle flash, it slumps, the revolver drops.
+    audio.bang(false);
+    hud.flash('bang');
+    world.dealer.setMood('out');
+    later(450, () => world.setGunPose('table'));
+    later(900, () => {
       world.kick('win');
       audio.win();
+      hud.flash('win');
     });
   }
-  if (state.mode !== 'ai') {
-    world.dealer.setMood('bang');
-    if (saveBest(state.mode, state.survived)) {
-      state.status = `OUT — NEW BEST ${state.survived}`;
-    }
-  } else {
-    world.dealer.setMood(state.winner === 'ai' ? 'win' : 'bang');
-    if (state.matchOver && !recordedMatch) {
-      recordedMatch = true;
-      recordAiMatch(state.playerRoundWins > state.aiRoundWins);
-    }
+  if (state.mode === 'ai' && state.matchOver && !recordedMatch) {
+    recordedMatch = true;
+    recordAiMatch(state.playerRoundWins > state.aiRoundWins);
   }
-  later(700, () => world.setPullCam(false));
 }
 
 function afterClick(result) {
@@ -114,8 +120,11 @@ function afterClick(result) {
     hud.flash('safe');
     buzz(15);
   }
-  world.cylinder.setIndex(state.current);
-  later(420, () => world.setPullCam(false));
+  world.gun.setIndex(state.current);
+  later(520, () => {
+    world.setPullCam(false);
+    world.setGunPose('table');
+  });
   if (state.mode === 'ai' && state.aiTurn) queueAi();
 }
 
@@ -126,7 +135,9 @@ function resolvePull(who) {
   }
   const result = pull(state, who);
   unlockButtons();
+  hud.setAim(false);
   world.setTension(0);
+  world.gun.setCocked(false);
   if (!result.ok) {
     world.setPullCam(false);
     sync();
@@ -142,12 +153,19 @@ function beginPull(who) {
   if (who === 'player' && !canPull(state, 'player')) return false;
   if (who === 'ai' && !canPull(state, 'ai')) return false;
   lockButtons();
-  world.setPullCam(true);
-  world.setTension(who === 'ai' ? 0.7 : 0.5);
-  world.dealer.setMood(state.aiTurn ? 'pull' : 'think');
-  audio.tick();
-  // HOUSE lingers a beat longer so its pull reads as a decision.
-  later(who === 'ai' ? 560 : 380, () => resolvePull(who));
+  // The ritual: revolver to the temple, hammer back, a few heartbeats, then the trigger.
+  world.setGunPose(who === 'ai' ? 'house' : 'player');
+  world.setPullCam(who === 'player');
+  if (who === 'player') hud.setAim(true);
+  world.setTension(who === 'ai' ? 0.6 : 0.7);
+  world.dealer.setMood(who === 'ai' ? 'pull' : 'think');
+  later(320, () => {
+    world.gun.setCocked(true);
+    audio.cock();
+  });
+  later(560, () => audio.heartbeat());
+  later(who === 'ai' ? 1000 : 960, () => audio.heartbeat());
+  later(who === 'ai' ? 1350 : 1250, () => resolvePull(who));
   return true;
 }
 
@@ -162,21 +180,43 @@ function doSpin() {
   audio.spin();
   buzz(8);
   world.kick('spin');
-  world.cylinder.kickSpin();
-  world.cylinder.land(state.current);
+  world.setGunPose('table');
+  world.gun.kickSpin();
+  world.gun.land(state.current);
   world.dealer.setMood('idle');
   world.dealer.setTell(false);
   sync();
+}
+
+function spinFx() {
+  audio.spin();
+  world.gun.kickSpin();
+  world.gun.land(state.current);
 }
 
 function doItem(item) {
   if (!state || !world || acting) return;
   const result = useItem(state, item, 'player');
   if (!result.ok) return;
-  audio.item();
+  if (item === ITEMS.respin) spinFx();
+  else audio.item();
   world.dealer.setMood('think');
-  if (result.item === 'rack') world.cylinder.land(state.current);
+  if (result.item === 'rack') world.gun.land(state.current);
   sync();
+}
+
+function doCash() {
+  if (!state || !world || acting) return;
+  const result = cashOut(state);
+  if (!result.ok) return;
+  audio.cash();
+  buzz([20, 40, 20]);
+  world.kick('cash');
+  world.setGunPose('table');
+  hud.flash('win');
+  if (saveBestCash(state.mode, result.pot)) state.status = `CASHED OUT $${result.pot} — NEW BEST`;
+  sync();
+  hud.focusPlay();
 }
 
 function queueAi() {
@@ -185,11 +225,12 @@ function queueAi() {
     const choice = decideAi(state);
     if (choice.type === 'item') {
       useItem(state, choice.item, 'ai');
-      audio.item();
+      if (choice.item === ITEMS.respin) spinFx();
+      else audio.item();
       world.dealer.setMood('think');
-      if (choice.item === 'rack') world.cylinder.land(state.current);
+      if (choice.item === 'rack') world.gun.land(state.current);
       sync();
-      if (state.spun && state.aiTurn) later(640, queueAi);
+      if (state.spun && state.aiTurn) later(choice.item === ITEMS.respin ? 1500 : 640, queueAi);
       return;
     }
     beginPull('ai');
@@ -208,7 +249,10 @@ function start(mode) {
   pendingMode = null;
   state = createMatch(mode);
   hud.showGame();
-  world.cylinder.setIndex(0, true);
+  world.gun.setIndex(0, true);
+  world.setGunPose('table');
+  hud.clearBlackout();
+  hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
   world.dealer.setTell(false);
@@ -223,7 +267,10 @@ function again() {
   recordedMatch = false;
   acting = false;
   resetMatch(state);
-  world.cylinder.setIndex(0, true);
+  world.gun.setIndex(0, true);
+  world.setGunPose('table');
+  hud.clearBlackout();
+  hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
   world.dealer.setTell(false);
@@ -236,7 +283,10 @@ function goNext() {
   clearTimers();
   acting = false;
   if (!nextRound(state).ok) return;
-  world.cylinder.setIndex(0, true);
+  world.gun.setIndex(0, true);
+  world.setGunPose('table');
+  hud.clearBlackout();
+  hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
   world.dealer.setTell(false);
@@ -249,7 +299,10 @@ function menu() {
   acting = false;
   state = null;
   hud.showMenu();
+  hud.clearBlackout();
+  hud.setAim(false);
   if (world) {
+    world.setGunPose('table');
     world.setPullCam(false);
     world.dealer.setMood('idle');
     world.dealer.setTell(false);
@@ -268,6 +321,7 @@ const hud = createHud({
   onSpin: doSpin,
   onPull: doPull,
   onItem: doItem,
+  onCash: doCash,
   onAgain: again,
   onNext: goNext,
   onMenu: menu,
@@ -285,7 +339,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (!state) {
-    const mode = modeFromMenuKey(e.key);
+    const mode = hud.adult ? modeFromMenuKey(e.key) : null;
     if (mode) start(mode);
     return;
   }
@@ -298,6 +352,10 @@ document.addEventListener('keydown', (e) => {
     else if (act === 'pull') doPull();
   } else if (isMenuKey(e.code)) {
     menu();
+  } else if (isCashKey(e.code)) {
+    doCash();
+  } else if (isRespinKey(e.code)) {
+    if (state.playerItems.includes(ITEMS.respin)) doItem(ITEMS.respin);
   } else {
     const item = itemFromDigit(state, e.key);
     if (item) doItem(item);
@@ -399,7 +457,7 @@ async function boot() {
   try {
     const { createWorld } = await import('./scene/world.js');
     world = createWorld(canvas);
-    world.cylinder.onLand(() => {
+    world.gun.onLand(() => {
       world.feel.kick('land');
       if (state && state.spun) audio.land();
     });
@@ -417,9 +475,11 @@ async function boot() {
 window.__chamber = {
   get state() { return state; },
   get ready() { return Boolean(world); },
+  get world() { return world; },
   start,
   spin: doSpin,
   pull: doPull,
+  cash: doCash,
 };
 
 boot();

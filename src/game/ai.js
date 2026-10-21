@@ -2,7 +2,7 @@ import { ITEMS, canUseItem, oddsDenom } from './logic.js';
 
 /**
  * HOUSE brain. Conservative: peek when the drum is getting short,
- * eject a known live, stun when odds are ugly, otherwise pull.
+ * eject a known live, re-spin or stun when odds are ugly, otherwise pull.
  */
 export function decideAi(state) {
   if (state.mode !== 'ai' || !state.aiTurn || state.over || !state.spun) {
@@ -20,6 +20,10 @@ export function decideAi(state) {
     return { type: 'item', item: ITEMS.scope };
   }
   if (blankKnown) return { type: 'pull' };
+  // Real house rule: re-spin once the odds turn ugly (1 in 3 or worse).
+  if (has(ITEMS.respin) && denom <= 3 && canUseItem(state, 'ai')) {
+    return { type: 'item', item: ITEMS.respin };
+  }
   if (has(ITEMS.stun) && denom <= 2 && canUseItem(state, 'ai')) {
     return { type: 'item', item: ITEMS.stun };
   }

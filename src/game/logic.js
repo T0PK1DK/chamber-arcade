@@ -3,19 +3,41 @@
  *
  * fair    — re-spin before every pull. Always 1/6. Score = your safe pulls.
  * classic — one spin, chamber advances, odds rise 1/6 → 1/1.
- * ai      — one spin, shared drum, you and the HOUSE take turns.
+ * ai      — one spin, shared revolver, you and the HOUSE take turns.
  *           Chamber advances each pull. First hit loses the round.
- *           Best of 3. Arcade chips: SCOPE / RACK / STUN.
+ *           Best of 3. Each side gets one RE-SPIN per round (a real
+ *           house rule: spin the cylinder again before your pull).
+ *
+ * Solo modes keep a pot: start at a $100 stake, every safe pull pays
+ * fair odds, and you may CASH OUT any time after your first safe pull.
+ * A hit loses the pot. Fair odds = no house edge, the only question is nerve.
+ *
+ * SCOPE / RACK / STUN stay in the rules (and their tests) for an arcade
+ * variant but are no longer dealt.
  */
 
 export const CHAMBERS = 6;
 export const MODES = Object.freeze({ fair: 'fair', classic: 'classic', ai: 'ai' });
-export const ITEMS = Object.freeze({ scope: 'scope', rack: 'rack', stun: 'stun' });
+export const ITEMS = Object.freeze({ scope: 'scope', rack: 'rack', stun: 'stun', respin: 'respin' });
 export const ITEM_LIST = Object.freeze([ITEMS.scope, ITEMS.rack, ITEMS.stun]);
+export const STAKE = 100;
+
+/** Pot after `safe` survived pulls, paid at fair odds for each pull. */
+export function potAfter(mode, safe) {
+  if (!safe || safe < 0) return 0;
+  if (mode === 'classic') {
+    // Survive pull k (1 in 6-k live) → ×(6-k)/(5-k). Telescopes to 6/(6-safe).
+    if (safe >= CHAMBERS) return 0;
+    return Math.round((STAKE * CHAMBERS) / (CHAMBERS - safe));
+  }
+  if (mode === 'fair') return Math.round(STAKE * (CHAMBERS / (CHAMBERS - 1)) ** safe);
+  return 0;
+}
 
 export const defaultRng = () => Math.random();
 
-function pickItems(count, rng) {
+/** Arcade-variant dealer (unused by the real game; kept for that variant). */
+export function pickItems(count, rng) {
   const out = [];
   for (let i = 0; i < count; i += 1) {
     out.push(ITEM_LIST[Math.floor(rng() * ITEM_LIST.length)]);
@@ -23,10 +45,9 @@ function pickItems(count, rng) {
   return out;
 }
 
-function dealItems(state, rng) {
-  const n = state.round === 1 ? 1 : 2;
-  state.playerItems = pickItems(n, rng);
-  state.aiItems = pickItems(n, rng);
+function dealItems(state) {
+  state.playerItems = [ITEMS.respin];
+  state.aiItems = [ITEMS.respin];
 }
 
 export function createMatch(mode, rng = defaultRng) {
@@ -52,11 +73,29 @@ export function createMatch(mode, rng = defaultRng) {
     peek: null,
     tell: false,
     stunOn: null,
+    pot: 0,
+    cashed: 0,
     status: mode === 'ai' ? 'SPIN TO LOAD — YOU PULL FIRST' : 'SPIN THE CYLINDER',
     last: null,
   };
   if (mode === 'ai') dealItems(state, rng);
   return state;
+}
+
+export function canCashOut(state) {
+  return state.mode !== 'ai' && !state.over && !state.busy && state.survived > 0 && state.pot > 0;
+}
+
+/** Walk away with the pot. Ends the run as a win. */
+export function cashOut(state) {
+  if (!canCashOut(state)) return { ok: false, reason: 'locked' };
+  state.over = true;
+  state.winner = 'cash';
+  state.cashed = state.pot;
+  state.peek = null;
+  state.status = `CASHED OUT $${state.pot}`;
+  state.last = { type: 'cash', pot: state.pot };
+  return { ok: true, pot: state.pot };
 }
 
 export function resetMatch(state, rng = defaultRng) {
@@ -129,7 +168,8 @@ function finishHit(state, byAi) {
     }
   } else {
     state.winner = 'bang';
-    state.status = `OUT AT ${state.survived}`;
+    state.status = state.pot > 0 ? `OUT — LOST $${state.pot}` : 'OUT ON THE FIRST PULL';
+    state.pot = 0;
   }
 }
 
@@ -178,21 +218,24 @@ export function pull(state, who = 'auto') {
   }
 
   if (!byAi) state.survived += 1;
+  if (state.mode !== 'ai') state.pot = potAfter(state.mode, state.survived);
   state.current = (state.current + 1) % CHAMBERS;
   state.last = { type: 'click', byAi, current: state.current };
 
   if (state.mode === 'fair') {
     state.spun = false;
-    state.status = 'SAFE. SPIN AGAIN';
+    state.status = `SAFE — POT $${state.pot}`;
   } else if (state.mode === 'classic') {
-    state.status = 'SAFE';
+    state.status = state.survived >= CHAMBERS - 1
+      ? `SAFE — POT $${state.pot}. THE LAST ONE IS LIVE`
+      : `SAFE — POT $${state.pot}`;
   } else {
     passTurn(state, byAi);
   }
   return { ok: true, hit: false, byAi };
 }
 
-export function useItem(state, item, who = 'player') {
+export function useItem(state, item, who = 'player', rng = defaultRng) {
   if (!canUseItem(state, who)) return { ok: false, reason: 'locked' };
   const bag = who === 'player' ? state.playerItems : state.aiItems;
   const idx = bag.indexOf(item);
@@ -229,6 +272,18 @@ export function useItem(state, item, who = 'player') {
     return { ok: true, item, ejected: 'blank' };
   }
 
+  if (item === ITEMS.respin) {
+    // Spin the cylinder again: the round lands somewhere new, odds back to 1 in 6.
+    state.bullet = Math.floor(rng() * CHAMBERS);
+    state.current = Math.floor(rng() * CHAMBERS);
+    state.pulls = 0;
+    state.peek = null;
+    state.tell = false;
+    state.status = who === 'player' ? 'YOU SPIN IT AGAIN — 1 IN 6' : 'HOUSE SPINS IT AGAIN';
+    state.last = { type: 'respin', who };
+    return { ok: true, item };
+  }
+
   if (item === ITEMS.stun) {
     state.stunOn = who === 'player' ? 'ai' : 'player';
     state.status = who === 'player' ? 'HOUSE STUNNED NEXT TURN' : 'YOU ARE STUNNED NEXT TURN';
@@ -256,7 +311,7 @@ export function nextRound(state, rng = defaultRng) {
   state.stunOn = null;
   state.playerItems = [];
   state.aiItems = [];
-  dealItems(state, rng);
+  dealItems(state);
   state.status = `ROUND ${state.round} — SPIN TO LOAD`;
   state.last = { type: 'next-round', round: state.round };
   return { ok: true };

@@ -258,14 +258,16 @@ test('stun on the player lets HOUSE pull again', () => {
   assert.equal(s.stunOn, null);
 });
 
-test('nextRound deals two chips from round 2', () => {
+test('every duel round deals exactly one re-spin to each side', () => {
   const s = createMatch('ai', () => 0);
+  assert.deepEqual(s.playerItems, [ITEMS.respin]);
+  assert.deepEqual(s.aiItems, [ITEMS.respin]);
   spin(s, seq([at(0), at(0)]));
   pull(s);
   assert.equal(nextRound(s, () => 0).ok, true);
   assert.equal(s.round, 2);
-  assert.equal(s.playerItems.length, 2);
-  assert.equal(s.aiItems.length, 2);
+  assert.deepEqual(s.playerItems, [ITEMS.respin]);
+  assert.deepEqual(s.aiItems, [ITEMS.respin]);
   assert.equal(s.tell, false);
   assert.equal(s.spun, false);
 });

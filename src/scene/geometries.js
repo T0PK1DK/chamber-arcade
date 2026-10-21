@@ -5,6 +5,7 @@ import {
   PlaneGeometry,
   RingGeometry,
   SphereGeometry,
+  TorusGeometry,
 } from 'three';
 
 /**
@@ -37,6 +38,9 @@ export function createGeometries() {
     },
     circle(r, seg) {
       return get(`cir:${r}:${seg}`, () => new CircleGeometry(r, seg));
+    },
+    torus(r, tube, rs, ts, arc) {
+      return get(`tor:${r}:${tube}:${rs}:${ts}:${arc}`, () => new TorusGeometry(r, tube, rs, ts, arc));
     },
     ring(inner, outer, seg) {
       return get(`ring:${inner}:${outer}:${seg}`, () => new RingGeometry(inner, outer, seg));
