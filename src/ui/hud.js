@@ -1,5 +1,16 @@
 import { CHAMBERS, ITEMS, STAKE, canCashOut, oddsDenom } from '../game/logic.js';
-import { loadScores, loadAdultOk, saveAdultOk, loadBigText, saveBigText } from '../game/storage.js';
+import {
+  loadScores,
+  loadAdultOk,
+  saveAdultOk,
+  loadBigText,
+  saveBigText,
+  loadGore,
+  saveGore,
+  loadFinish,
+  saveFinish,
+} from '../game/storage.js';
+import { makeSplatter, paintSplatter, FINISHES } from '../game/splatter.js';
 
 const ITEM_LABEL = {
   [ITEMS.scope]: 'PEEK',
@@ -17,7 +28,7 @@ const ITEM_HINT = {
 
 const money = (n) => `$${n.toLocaleString('en-US')}`;
 
-export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, onNext, onMenu, onMute }) {
+export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, onNext, onMenu, onMute, onFinish }) {
   const app = document.getElementById('app');
   app.innerHTML = `
     <header class="top">
@@ -27,6 +38,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       </div>
       <div class="top-btns">
         <button type="button" id="textBtn" class="ghost" aria-pressed="false" aria-label="Larger text">A+</button>
+        <button type="button" id="goreBtn" class="ghost" aria-pressed="true">BLOOD ON</button>
         <button type="button" id="muteBtn" class="ghost" aria-pressed="false">SOUND ON</button>
       </div>
     </header>
@@ -36,7 +48,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
     <section id="gate" class="panel gate" aria-labelledby="gateTitle" hidden>
       <h1 id="gateTitle">18+</h1>
       <p class="lead">This is a game of Russian roulette with a revolver.</p>
-      <p>It's played for nerve and play money only. No one is hurt, and there's no gore.</p>
+      <p>It contains <strong>guns, blood and simulated violence</strong>. It's played with play money only. You can switch blood off any time with the <strong>BLOOD</strong> button.</p>
       <div class="gate-btns">
         <button type="button" id="gateYes" class="primary">I'M 18 OR OLDER</button>
         <a class="button ghost" href="https://www.google.com/">LEAVE</a>
@@ -51,6 +63,14 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
         <button type="button" data-mode="classic" aria-keyshortcuts="2">ONE SPIN<span>Spin once, then keep pulling. Each empty chamber raises the odds and grows the pot faster. Walk away any time.</span></button>
         <button type="button" data-mode="fair" aria-keyshortcuts="1">SPIN EVERY PULL<span>The cylinder is spun before every pull. Always 1 in 6. Steady money.</span></button>
         <button type="button" data-mode="ai" aria-keyshortcuts="3">DUEL THE HOUSE<span>Pass the revolver back and forth. Best of three. One re-spin each per round.</span></button>
+      </div>
+      <div class="finish" role="radiogroup" aria-label="Revolver finish">
+        <small>YOUR REVOLVER</small>
+        <div>
+          <button type="button" data-finish="blued" role="radio">BLUED</button>
+          <button type="button" data-finish="nickel" role="radio">NICKEL</button>
+          <button type="button" data-finish="gold" role="radio">GOLD</button>
+        </div>
       </div>
       <p class="high">BEST CASH-OUT · One spin <strong id="bestClassic">$0</strong> · Every pull <strong id="bestFair">$0</strong></p>
       <p class="record">DUELS WON–LOST <strong id="aiRec">0–0</strong></p>
@@ -99,7 +119,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
 
     <div id="holdRing" class="hold-ring" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><circle class="fill" cx="32" cy="32" r="27" pathLength="100"/></svg><span>HOLD</span></div>
 
-    <p class="disclaimer">A GAME OF CHANCE · PLAY MONEY · 18+ · NO GORE</p>
+    <p class="disclaimer">18+ · GUNS, BLOOD &amp; VIOLENCE · PLAY MONEY · A GAME</p>
   `;
 
   const $ = (id) => document.getElementById(id);
@@ -131,6 +151,36 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
   const holdFill = holdRing.querySelector('.fill');
   const flashEl = document.getElementById('flash');
   const blackEl = document.getElementById('blackout');
+  const splatEl = document.getElementById('splat');
+  const goreBtn = $('goreBtn');
+  let gore = loadGore();
+  function setGore(on) {
+    gore = on;
+    goreBtn.textContent = on ? 'BLOOD ON' : 'BLOOD OFF';
+    goreBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (!on && splatEl) splatEl.className = '';
+  }
+  setGore(gore);
+  goreBtn.addEventListener('click', () => {
+    saveGore(!gore);
+    setGore(!gore);
+  });
+
+  let finish = loadFinish();
+  const finishBtns = [...document.querySelectorAll('[data-finish]')];
+  function setFinish(name) {
+    finish = FINISHES.includes(name) ? name : 'blued';
+    finishBtns.forEach((b) => {
+      const on = b.dataset.finish === finish;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    if (onFinish) onFinish(finish);
+  }
+  finishBtns.forEach((b) => b.addEventListener('click', () => {
+    saveFinish(b.dataset.finish);
+    setFinish(b.dataset.finish);
+  }));
 
   const pips = [];
   for (let i = 0; i < CHAMBERS; i += 1) {
@@ -242,6 +292,40 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
     get adult() {
       return adult;
     },
+    get gore() {
+      return gore;
+    },
+    get finish() {
+      return finish;
+    },
+    applyFinish() {
+      setFinish(finish);
+    },
+    /** Blood across the screen when you take the round (blood on only). */
+    splat() {
+      if (!gore || !splatEl) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      splatEl.width = Math.round(w * dpr);
+      splatEl.height = Math.round(h * dpr);
+      const g = splatEl.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      // Thrown from the right temple across the view, plus a second smaller hit.
+      paintSplatter(g, w, h, makeSplatter(Math.random, {
+        cx: 0.92, cy: 0.4, angle: Math.PI, spread: 1.8, reach: 0.95, blobs: 7, drops: 120, drips: 6,
+      }), 'rgba(120,6,6,0.92)', 'rgba(50,2,2,0.95)');
+      paintSplatter(g, w, h, makeSplatter(Math.random, {
+        cx: 0.62, cy: 0.18, angle: 2.4, spread: 2.4, reach: 0.35, blobs: 3, drops: 40, drips: 3,
+      }), 'rgba(120,6,6,0.88)', 'rgba(50,2,2,0.9)');
+      splatEl.className = '';
+      void splatEl.offsetWidth;
+      splatEl.className = 'on';
+    },
+    clearSplat() {
+      if (splatEl) splatEl.className = '';
+    },
     setMuted(muted) {
       muteBtn.textContent = `SOUND ${muted ? 'OFF' : 'ON'}`;
       muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
@@ -289,11 +373,15 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       void flashEl.offsetWidth;
       flashEl.className = `on ${kind}`;
     },
-    /** Hard cut to black when you take the round; fades back after `ms`. */
-    blackout(ms) {
+    /** Cut to black when you take the round (after `delay`), fade back after `ms`. */
+    blackout(ms, delay = 0) {
       if (!blackEl) return;
-      blackEl.className = 'on';
-      setTimeout(() => { blackEl.className = 'fade'; }, ms);
+      const go = () => {
+        blackEl.className = 'on';
+        setTimeout(() => { blackEl.className = 'fade'; }, ms);
+      };
+      if (delay) setTimeout(go, delay);
+      else go();
     },
     /** Tunnel vision while the revolver is at your temple. */
     setAim(on) {

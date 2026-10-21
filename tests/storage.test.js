@@ -29,6 +29,10 @@ const {
   saveAdultOk,
   loadBigText,
   saveBigText,
+  loadGore,
+  saveGore,
+  loadFinish,
+  saveFinish,
 } = await import('../src/game/storage.js');
 
 beforeEach(() => {
@@ -94,4 +98,22 @@ test('18+ gate and big text persist', () => {
   assert.equal(loadBigText(), true);
   saveBigText(false);
   assert.equal(loadBigText(), false);
+});
+
+test('blood defaults on and the toggle persists', () => {
+  assert.equal(loadGore(), true);
+  saveGore(false);
+  assert.equal(loadGore(), false);
+  saveGore(true);
+  assert.equal(loadGore(), true);
+});
+
+test('revolver finish persists and rejects junk', () => {
+  assert.equal(loadFinish(), 'blued');
+  saveFinish('gold');
+  assert.equal(loadFinish(), 'gold');
+  saveFinish('rainbow');
+  assert.equal(loadFinish(), 'gold');
+  mem.set('chamberFinish', 'hacked');
+  assert.equal(loadFinish(), 'blued');
 });

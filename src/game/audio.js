@@ -112,8 +112,13 @@ export function createAudio() {
     },
     /** self = it was your pull: the report, then a long high ear-ring. */
     bang(self = false) {
-      noise(0.5, 0.55);
-      tone(90, 30, 0.5, 0.5);
+      // Crack + chest thump + two room slaps off the walls.
+      noise(0.09, 0.9);
+      noise(0.6, 0.5);
+      tone(140, 28, 0.55, 0.6);
+      tone(60, 24, 0.8, 0.4, 'triangle');
+      later(95, () => noise(0.35, 0.18));
+      later(230, () => noise(0.4, 0.08));
       if (self) later(60, () => tone(3900, 3600, 2.6, 0.035, 'sine'));
     },
     item() {

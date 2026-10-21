@@ -83,12 +83,18 @@ function unlockButtons() {
 }
 
 function afterHit(result) {
-  world.kick('bang');
+  world.kick('bang', { byAi: result.byAi, gore: hud.gore });
   buzz([60, 30, 120]);
   if (!result.byAi) {
-    // You took the round: hard cut to black and a ringing ear. Nothing shown.
+    // You took the round: blood hits the lens (if on), then black and a ringing ear.
     audio.bang(true);
-    hud.blackout(1700);
+    if (hud.gore) {
+      hud.flash('bang');
+      hud.splat();
+      hud.blackout(1500, 650);
+    } else {
+      hud.blackout(1700);
+    }
     world.dealer.setMood(state.mode === 'ai' ? 'win' : 'idle');
     later(1750, () => {
       world.setGunPose('table');
@@ -252,6 +258,8 @@ function start(mode) {
   world.gun.setIndex(0, true);
   world.setGunPose('table');
   hud.clearBlackout();
+  hud.clearSplat();
+  if (world) world.clearFx();
   hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
@@ -270,6 +278,8 @@ function again() {
   world.gun.setIndex(0, true);
   world.setGunPose('table');
   hud.clearBlackout();
+  hud.clearSplat();
+  if (world) world.clearFx();
   hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
@@ -286,6 +296,8 @@ function goNext() {
   world.gun.setIndex(0, true);
   world.setGunPose('table');
   hud.clearBlackout();
+  hud.clearSplat();
+  if (world) world.clearFx();
   hud.setAim(false);
   world.setPullCam(false);
   world.dealer.setMood('idle');
@@ -300,6 +312,8 @@ function menu() {
   state = null;
   hud.showMenu();
   hud.clearBlackout();
+  hud.clearSplat();
+  if (world) world.clearFx();
   hud.setAim(false);
   if (world) {
     world.setGunPose('table');
@@ -322,6 +336,7 @@ const hud = createHud({
   onPull: doPull,
   onItem: doItem,
   onCash: doCash,
+  onFinish: (name) => { if (world) world.setFinish(name); },
   onAgain: again,
   onNext: goNext,
   onMenu: menu,
@@ -457,6 +472,7 @@ async function boot() {
   try {
     const { createWorld } = await import('./scene/world.js');
     world = createWorld(canvas);
+    hud.applyFinish();
     world.gun.onLand(() => {
       world.feel.kick('land');
       if (state && state.spun) audio.land();

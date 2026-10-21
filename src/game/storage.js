@@ -8,6 +8,8 @@ const KEYS = {
   classicCash: 'chamberCash_classic',
   adult: 'chamberAdultOk',
   bigText: 'chamberBigText',
+  gore: 'chamberGore',
+  finish: 'chamberFinish',
   legacy: 'chamberBest',
 };
 
@@ -96,4 +98,24 @@ export function loadMuted() {
 
 export function saveMuted(muted) {
   rawSet(KEYS.muted, muted ? '1' : '0');
+}
+
+/** Blood effects default ON for the 18+ audience; the toggle turns them off. */
+export function loadGore() {
+  return rawGet(KEYS.gore) !== '0';
+}
+
+export function saveGore(on) {
+  rawSet(KEYS.gore, on ? '1' : '0');
+}
+
+const FINISH_SET = new Set(['blued', 'nickel', 'gold']);
+
+export function loadFinish() {
+  const f = rawGet(KEYS.finish);
+  return FINISH_SET.has(f) ? f : 'blued';
+}
+
+export function saveFinish(name) {
+  if (FINISH_SET.has(name)) rawSet(KEYS.finish, name);
 }

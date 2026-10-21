@@ -23,6 +23,7 @@ import { createDealer } from './dealer.js';
 import { createKits } from './kits.js';
 import { createQuality } from './quality.js';
 import { createSparks } from './sparks.js';
+import { createFx } from './fx.js';
 import { framing } from './framing.js';
 import { createFeel } from '../game/feel.js';
 
@@ -115,7 +116,8 @@ export function createWorld(canvas) {
   const dealer = createDealer(mats, geo);
   const kits = createKits(mats, geo);
   const sparks = createSparks();
-  scene.add(gun.root, dealer.root, kits.root, sparks.root);
+  const fx = createFx({ quality });
+  scene.add(gun.root, dealer.root, kits.root, sparks.root, ...fx.objects);
   if (quality.shadows) {
     // Revolver and HOUSE drop soft shadows into the lamp pool (desktop only).
     for (const r of [gun.root, dealer.root]) {
@@ -129,6 +131,13 @@ export function createWorld(canvas) {
   const wantColor = new Color(BRASS);
   const hitColor = new Color(MUZZLE);
   const tableSpot = new Vector3(0, 0.95, 0.1);
+  const barrel = new Vector3();
+  const exitWound = new Vector3();
+  const FINISH = {
+    blued: [0x2b2f36, 0x3a4250, 0x16181c],
+    nickel: [0x878c93, 0x8a9098, 0x4a4e54],
+    gold: [0x9c7a2c, 0x9a7c3a, 0x5a4214],
+  };
   let pullBlend = 0;
   let wantedPull = 0;
   let tension = 0;
@@ -181,22 +190,37 @@ export function createWorld(canvas) {
     setTurn(who) {
       wantColor.setHex(who === 'house' ? EMBER : BRASS);
     },
-    kick(kind) {
+    /** opts: { byAi, gore } for a live round. */
+    kick(kind, opts = {}) {
       feel.kick(kind === 'cash' ? 'win' : kind);
       if (kind === 'bang') {
         gun.muzzle(muzzle);
+        gun.barrelDir(barrel);
         flashLight.position.copy(muzzle);
-        // Muzzle flash only; no gore. Skipped when the gun is at your own
-        // temple (the screen cuts to black instead).
-        if (!feel.calm && gun.pose !== 'player') {
-          sparks.burst(muzzle, 0xfff0b0, 18, 1.4);
-          sparks.burst(muzzle, MUZZLE, 16, 0.9);
+        // Your own shot happens off-frame (the HUD handles that screen);
+        // HOUSE's shot gets the flash, smoke and, if blood is on, the spray.
+        if (gun.pose !== 'player') {
+          fx.shot(muzzle, barrel, { calm: feel.calm });
+          if (!feel.calm) sparks.burst(muzzle, 0xfff0b0, 10, 1.0);
+          if (opts.gore && opts.byAi) {
+            dealer.headPos(exitWound).addScaledVector(barrel, 0.17);
+            fx.blood(exitWound, barrel);
+          }
         }
       } else if ((kind === 'win' || kind === 'cash') && !feel.calm) {
         // Gold chips scatter across the felt.
         sparks.burst(tableSpot, 0xffd36a, 34, 2.2);
         sparks.burst(tableSpot, 0xfff0c0, 16, 1.6);
       }
+    },
+    clearFx() {
+      fx.clear();
+    },
+    setFinish(name) {
+      const f = FINISH[name] || FINISH.blued;
+      mats.steel.color.setHex(f[0]);
+      if (mats.steel.specular) mats.steel.specular.setHex(f[1]);
+      mats.steelDark.color.setHex(f[2]);
     },
     /** 'table' | 'player' | 'house' */
     setGunPose(pose) {
@@ -211,6 +235,7 @@ export function createWorld(canvas) {
       // (gun updates after the camera moves; it can ride in camera space.)
       dealer.update(sim, calm);
       sparks.update(sim);
+      fx.update(sim);
       if (!calm) pullBlend += (wantedPull - pullBlend) * Math.min(1, sim * 4);
       else pullBlend = wantedPull;
       const flash = feel.flash;
@@ -265,6 +290,7 @@ export function createWorld(canvas) {
       gun.dispose();
       dealer.dispose();
       sparks.dispose();
+      fx.dispose();
       props.screen.material.dispose();
       props.rimMat.dispose();
       mats.dispose();

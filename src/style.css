@@ -88,6 +88,24 @@ body.aim #vignette {
 #flash.win { background: radial-gradient(ellipse at 50% 55%, rgba(233, 207, 122, 0.35), transparent 75%); animation-duration: 0.9s; }
 @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 
+/* Blood on the lens when you take the round. Stays (dimmed) on the result. */
+#splat {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 7;
+  opacity: 0;
+}
+#splat.on { animation: splat 2.4s ease-out forwards; }
+@keyframes splat {
+  0% { opacity: 0; transform: scale(1.04); }
+  4% { opacity: 1; transform: scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+
 /* Your round: an instant cut to black, then the room fades back. */
 #blackout { z-index: 8; background: #000; }
 #blackout.on { opacity: 1; transition: none; }
@@ -112,7 +130,7 @@ body.aim #vignette {
 }
 .brand strong { font-family: var(--serif); letter-spacing: 0.24em; color: var(--brass); }
 .brand span { display: block; color: var(--dim); font-size: 0.8rem; font-family: var(--serif); font-style: italic; }
-.top-btns { display: flex; gap: 8px; }
+.top-btns { display: flex; gap: 6px; justify-content: flex-end; }
 
 .panel {
   display: none;
@@ -125,7 +143,8 @@ body.aim #vignette {
   border: 1px solid rgba(216, 178, 90, 0.5);
   background: var(--panel);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-  max-height: calc(100% - 6rem);
+  max-height: calc(100vh - 9rem);
+  max-height: calc(100dvh - 9rem);
   overflow-y: auto;
 }
 .panel.active { display: block; }
@@ -163,7 +182,7 @@ h1 {
   color: var(--dim);
   font-weight: 400;
 }
-.modes button:hover:not(:disabled) span { color: #2a1d10; }
+@media (hover: hover) { .modes button:hover:not(:disabled) span { color: #2a1d10; } }
 
 button, a.button {
   font-family: inherit;
@@ -181,13 +200,24 @@ button, a.button {
   min-height: 56px;
   cursor: pointer;
 }
-button:hover:not(:disabled), a.button:hover { background: var(--brass); color: #1a1208; }
+/* Hover only where hover exists; on touch it sticks after a tap. */
+@media (hover: hover) {
+  button:hover:not(:disabled), a.button:hover { background: var(--brass); color: #1a1208; }
+}
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 .ghost { border-color: rgba(216, 178, 90, 0.55); font-weight: 500; }
-.top .ghost { min-height: 44px; padding: 8px 12px; font-size: 0.8rem; }
+.top .ghost { min-height: 44px; padding: 6px 8px; font-size: 0.7rem; letter-spacing: 0.03em; white-space: nowrap; }
 .hidden { display: none !important; }
 
+.finish { margin-top: 1rem; }
+.finish small { display: block; color: var(--dim); font-size: 0.72rem; letter-spacing: 0.14em; margin-bottom: 0.35rem; }
+.finish div { display: flex; gap: 8px; justify-content: center; }
+.finish button { flex: 1; min-height: 48px; padding: 8px; font-size: 0.85rem; border-color: rgba(216, 178, 90, 0.45); }
+.finish button.on { border-color: var(--brass); background: rgba(216, 178, 90, 0.22); }
+.finish [data-finish="nickel"].on { box-shadow: inset 0 -4px 0 #c8ccd2; }
+.finish [data-finish="gold"].on { box-shadow: inset 0 -4px 0 #d8b25a; }
+.finish [data-finish="blued"].on { box-shadow: inset 0 -4px 0 #4a5466; }
 .high, .record { margin-top: 1rem; color: var(--dim); font-size: 0.9rem; }
 .record { margin-top: 0.3rem; }
 .high strong, .record strong { color: var(--cream); }
@@ -303,7 +333,7 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   transition: transform 0.08s ease-out, background 0.12s;
 }
 .actions .primary.pull { border-color: var(--ember); background: rgba(255, 138, 74, 0.1); }
-.actions .primary.pull:hover:not(:disabled) { background: var(--ember); color: #1a0d00; }
+@media (hover: hover) { .actions .primary.pull:hover:not(:disabled) { background: var(--ember); color: #1a0d00; } }
 /* Cash out sits first in the row so the safe choice is the first thing you see. */
 .actions .cash {
   flex: 1 1 100%;
@@ -314,7 +344,7 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   color: #1a1208;
   background: var(--win);
 }
-.actions .cash:hover:not(:disabled) { background: #f5df98; }
+@media (hover: hover) { .actions .cash:hover:not(:disabled) { background: #f5df98; } }
 .actions button:active:not(:disabled) { transform: scale(0.97); }
 .gate .primary { min-height: 64px; background: var(--brass); color: #1a1208; }
 

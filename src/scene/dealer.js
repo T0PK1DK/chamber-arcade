@@ -74,6 +74,9 @@ export function createDealer(mats, geo) {
       if (next === 'bang') shake = 1;
       if (next === 'click') nod = 1;
     },
+    headPos(out) {
+      return head.getWorldPosition(out);
+    },
     setTell(on) {
       tell = Boolean(on);
     },

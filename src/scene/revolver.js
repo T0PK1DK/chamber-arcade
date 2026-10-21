@@ -106,6 +106,7 @@ export function createRevolver(mats, geo) {
   root.position.copy(poses.table.pos);
   root.quaternion.copy(poses.table.quat);
 
+  const tmpQ = new Quaternion();
   let pose = 'table';
   let spinVel = 0;
   let target = 0;
@@ -122,6 +123,11 @@ export function createRevolver(mats, geo) {
     root,
     muzzle(out) {
       return muzzlePoint.getWorldPosition(out);
+    },
+    /** World direction the barrel points. */
+    barrelDir(out) {
+      gun.getWorldQuaternion(tmpQ);
+      return out.set(1, 0, 0).applyQuaternion(tmpQ).normalize();
     },
     onLand(fn) {
       onLand = fn;
@@ -171,7 +177,8 @@ export function createRevolver(mats, geo) {
       cock += (cockWanted - cock) * Math.min(1, dt * (cockWanted ? 7 : 30));
       hammer.rotation.z = cock * 0.75;
       // Recoil: kick the muzzle up.
-      gun.rotation.z = punch * 0.35;
+      gun.rotation.z = punch * 0.6;
+      gun.position.x = -punch * 0.05;
 
       if (!spinning) return;
       if (reducedMotion) {

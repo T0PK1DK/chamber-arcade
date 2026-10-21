@@ -166,8 +166,17 @@ The owner asked for a real Russian roulette game, fun for an older (adult) crowd
 - A systematic review found older adults prefer larger type, up to a point. Practitioner guides converge on 16 px+ body text, a user-adjustable size, high contrast (WCAG AA 4.5:1, ideally 7:1), touch targets well above 44 px with spacing between them, text labels on controls, and clear tap feedback. ([PMC systematic review](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9376262/), [arXiv touchscreen guideline review](https://arxiv.org/pdf/1703.06317), [UX Collective checklist](https://uxdesign.cc/designing-for-older-audiences-checklist-best-practices-b6ca3ec5bcbf), [UX Collective guide](https://uxdesign.cc/a-guide-to-interface-design-for-older-adults-31109468d46d), [50+ game design guide](https://wikidocs.net/155867))
   - **What we built:** an 18 px base with an **A+** toggle (~21 px, saved). Cream on near-black, well above 7:1. 56–68 px buttons. Plain-language buttons ("PULL THE TRIGGER", "CASH OUT $150"). Odds in words ("1 IN 4 IS LIVE"). A six-pip cylinder dial. A How to play section on the menu.
 
-### Lines we kept
+### Blood pass (owner request, same day)
 
-- **No gore, ever.** Your hit is an instant cut to black with a ringing ear. HOUSE's hit is a muzzle flash and a slump onto the table. No blood, no wound.
-- **18+ gate** on first visit, with a one-line 988 crisis-line note. The theme is self-harm-adjacent, and the note costs nothing.
+The owner asked for real gore, guns and effects for the 18+ audience, pointing to Roblox games in the same lane. We added **M-rated game blood** with a player toggle:
+
+- **HOUSE takes the round:** muzzle flash, barrel smoke, a blood spray out the far side of the head, spatter on the wall and felt, and a pool that spreads under it after it slumps.
+- **You take the round:** blood hits the lens, then the screen cuts to black with a ringing ear.
+- **BLOOD ON/OFF** button (default on, saved). With it off you get the earlier clean version.
+- **Guns:** a choice of three revolver finishes (blued, nickel, gold), harder recoil, and a layered gunshot with two room echoes.
+
+**Deliberate limit:** no wound modelling, dismemberment or head damage. Blood effects carry the moment without a detailed depiction of a self-inflicted gunshot.
+
+### Lines we kept
+- **18+ gate** on first visit, now naming guns, blood and violence, plus a one-line 988 crisis-line note. The theme is self-harm-adjacent, and the note costs nothing.
 - **Play money only.** No real-money wagering, no purchases.
