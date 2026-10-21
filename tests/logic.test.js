@@ -10,7 +10,9 @@ import {
   resetMatch,
   canSpin,
   canPull,
+  canUseItem,
   oddsDenom,
+  snapshot,
   ITEMS,
 } from '../src/game/logic.js';
 import { decideAi } from '../src/game/ai.js';
@@ -161,3 +163,142 @@ test('HOUSE racks a known live and otherwise pulls', () => {
   s.aiItems = [];
   assert.deepEqual(decideAi(s), { type: 'pull' });
 });
+
+test('unknown mode throws', () => {
+  assert.throws(() => createMatch('buckshot'), /unknown mode/);
+});
+
+test('fair first-chamber hit scores zero and locks the table', () => {
+  const s = createMatch('fair');
+  spin(s, seq([at(2), at(2)]));
+  const r = pull(s);
+  assert.equal(r.hit, true);
+  assert.equal(s.survived, 0);
+  assert.equal(s.over, true);
+  assert.equal(canSpin(s), false);
+  assert.equal(canPull(s), false);
+});
+
+test('cannot pull, item, or peek before spin', () => {
+  const s = createMatch('ai', () => 0);
+  s.playerItems = [ITEMS.scope];
+  assert.equal(canPull(s), false);
+  assert.equal(canUseItem(s, 'player'), false);
+  assert.equal(pull(s).ok, false);
+  assert.equal(useItem(s, ITEMS.scope, 'player').ok, false);
+});
+
+test('player pull is rejected during HOUSE turn', () => {
+  const s = createMatch('ai', () => 0);
+  spin(s, seq([at(5), at(0)]));
+  pull(s, 'player');
+  assert.equal(s.aiTurn, true);
+  assert.equal(pull(s, 'player').ok, false);
+  assert.equal(pull(s, 'player').reason, 'ai-turn');
+  assert.equal(s.over, false);
+  assert.equal(s.pulls, 1);
+});
+
+test('ai pull is rejected during the player turn', () => {
+  const s = createMatch('ai', () => 0);
+  spin(s, seq([at(5), at(0)]));
+  assert.equal(pull(s, 'ai').ok, false);
+  assert.equal(pull(s, 'ai').reason, 'player-turn');
+});
+
+test('rack of a blank advances the chamber and keeps the drum loaded', () => {
+  const s = createMatch('ai', () => 0);
+  s.playerItems = [ITEMS.rack];
+  spin(s, seq([at(5), at(0)]));
+  const r = useItem(s, ITEMS.rack, 'player');
+  assert.equal(r.ejected, 'blank');
+  assert.equal(s.spun, true);
+  assert.equal(s.current, 1);
+  assert.equal(s.pulls, 1);
+  assert.equal(s.tell, false);
+});
+
+test('HOUSE scope of a live chamber sets tell; pull clears it', () => {
+  const s = createMatch('ai', () => 0);
+  s.aiTurn = true;
+  s.busy = true;
+  s.spun = true;
+  s.bullet = 0;
+  s.current = 0;
+  s.aiItems = [ITEMS.scope];
+  const r = useItem(s, ITEMS.scope, 'ai');
+  assert.equal(r.peek, 'live');
+  assert.equal(s.tell, true);
+  pull(s, 'ai');
+  assert.equal(s.tell, false);
+});
+
+test('player scope does not give HOUSE a tell', () => {
+  const s = createMatch('ai', () => 0);
+  s.playerItems = [ITEMS.scope];
+  spin(s, seq([at(0), at(0)]));
+  useItem(s, ITEMS.scope, 'player');
+  assert.equal(s.peek, 'live');
+  assert.equal(s.tell, false);
+});
+
+test('stun on the player lets HOUSE pull again', () => {
+  const s = createMatch('ai', () => 0);
+  s.aiItems = [ITEMS.stun];
+  s.aiTurn = true;
+  s.busy = true;
+  s.spun = true;
+  s.bullet = 5;
+  s.current = 0;
+  useItem(s, ITEMS.stun, 'ai');
+  const r = pull(s, 'ai');
+  assert.equal(r.hit, false);
+  assert.equal(s.aiTurn, true);
+  assert.equal(s.busy, true);
+  assert.equal(s.stunOn, null);
+});
+
+test('nextRound deals two chips from round 2', () => {
+  const s = createMatch('ai', () => 0);
+  spin(s, seq([at(0), at(0)]));
+  pull(s);
+  assert.equal(nextRound(s, () => 0).ok, true);
+  assert.equal(s.round, 2);
+  assert.equal(s.playerItems.length, 2);
+  assert.equal(s.aiItems.length, 2);
+  assert.equal(s.tell, false);
+  assert.equal(s.spun, false);
+});
+
+test('player wins the match after two HOUSE hits', () => {
+  const s = createMatch('ai', () => 0);
+  spin(s, seq([at(1), at(0)]));
+  pull(s, 'player');
+  pull(s, 'ai');
+  assert.equal(s.playerRoundWins, 1);
+  nextRound(s, () => 0);
+  spin(s, seq([at(1), at(0)]));
+  pull(s, 'player');
+  pull(s, 'ai');
+  assert.equal(s.playerRoundWins, 2);
+  assert.equal(s.matchOver, true);
+  assert.match(s.status, /YOU WIN/);
+});
+
+test('snapshot copies item bags', () => {
+  const s = createMatch('ai', () => 0);
+  s.playerItems = [ITEMS.scope];
+  const snap = snapshot(s);
+  snap.playerItems.push(ITEMS.stun);
+  assert.deepEqual(s.playerItems, [ITEMS.scope]);
+});
+
+test('fair odds stay 1/6 after a safe click because the drum is unloaded', () => {
+  const s = createMatch('fair', seq([at(0), at(1)]));
+  spin(s, seq([at(0), at(1)]));
+  pull(s);
+  assert.equal(s.spun, false);
+  assert.equal(oddsDenom(s), 6);
+});
+
+

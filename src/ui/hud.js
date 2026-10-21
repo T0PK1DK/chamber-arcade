@@ -21,25 +21,27 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
         <strong>CHAMBER</strong>
         <span>// ARCADE</span>
       </div>
-      <button type="button" id="muteBtn" class="ghost">SOUND: ON</button>
+      <button type="button" id="muteBtn" class="ghost" aria-pressed="false">SOUND: ON</button>
     </header>
 
-    <section id="menu" class="panel menu active">
+    <p id="bootLine" class="boot" hidden>LIGHTING THE TABLE…</p>
+
+    <section id="menu" class="panel menu active" aria-label="Choose mode">
       <h1>CHAMBER</h1>
       <p class="sub">CRT TABLE · TOY DRUM · NO REAL RISK</p>
       <div class="modes">
-        <button type="button" data-mode="fair">FAIR<span>Always 1/6. Re-spin every pull.</span></button>
-        <button type="button" data-mode="classic">CLASSIC<span>One load. Odds rise as chambers empty.</span></button>
-        <button type="button" data-mode="ai">VS HOUSE<span>Best of 3. Shared drum. Arcade chips.</span></button>
+        <button type="button" data-mode="fair" aria-keyshortcuts="1">FAIR<span>Always 1/6. Re-spin every pull. Key 1</span></button>
+        <button type="button" data-mode="classic" aria-keyshortcuts="2">CLASSIC<span>One load. Odds rise as chambers empty. Key 2</span></button>
+        <button type="button" data-mode="ai" aria-keyshortcuts="3">VS HOUSE<span>Best of 3. Shared drum. Arcade chips. Key 3</span></button>
       </div>
       <p class="high">BEST — FAIR <strong id="bestFair">0</strong> · CLASSIC <strong id="bestClassic">0</strong></p>
       <p class="record">VS HOUSE <strong id="aiRec">0-0</strong></p>
     </section>
 
-    <section id="hud" class="hud hidden">
+    <section id="hud" class="hud hidden" aria-live="off">
       <div class="banner">
         <p id="turn" class="turn"></p>
-        <p id="status" class="status">READY</p>
+        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">READY</p>
         <p id="match" class="match"></p>
       </div>
       <div class="stats">
@@ -73,6 +75,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
   const $ = (id) => document.getElementById(id);
   const menu = $('menu');
   const hud = $('hud');
+  const bootLine = $('bootLine');
   const status = $('status');
   const turn = $('turn');
   const match = $('match');
@@ -108,9 +111,12 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
   paintScores();
 
   function chips(el, items, interactive) {
-    el.innerHTML = '';
+    el.textContent = '';
     if (!items.length) {
-      el.innerHTML = '<em class="empty">—</em>';
+      const empty = document.createElement('em');
+      empty.className = 'empty';
+      empty.textContent = '—';
+      el.appendChild(empty);
       return;
     }
     items.forEach((item) => {
@@ -118,25 +124,57 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       b.className = 'chip';
       b.textContent = ITEM_LABEL[item];
       b.title = ITEM_HINT[item] || '';
-      if (interactive) b.addEventListener('click', () => onItem(item));
+      if (interactive) {
+        b.type = 'button';
+        b.addEventListener('click', () => onItem(item));
+      }
       el.appendChild(b);
     });
+  }
+
+  function focusPlay() {
+    const target = !spinBtn.disabled && !spinBtn.classList.contains('hidden')
+      ? spinBtn
+      : !fireBtn.disabled && !fireBtn.classList.contains('hidden')
+        ? fireBtn
+        : !nextBtn.classList.contains('hidden')
+          ? nextBtn
+          : !againBtn.classList.contains('hidden')
+            ? againBtn
+            : null;
+    target?.focus({ preventScroll: true });
   }
 
   return {
     paintScores,
     setMuted(muted) {
       muteBtn.textContent = `SOUND: ${muted ? 'OFF' : 'ON'}`;
+      muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    },
+    setBoot(msg) {
+      if (!msg) {
+        bootLine.hidden = true;
+        return;
+      }
+      bootLine.hidden = false;
+      bootLine.textContent = msg;
+    },
+    setModesEnabled(on) {
+      menu.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.disabled = !on;
+      });
     },
     showMenu() {
       menu.classList.add('active');
       hud.classList.add('hidden');
       paintScores();
+      menu.querySelector('[data-mode]')?.focus({ preventScroll: true });
     },
     showGame() {
       menu.classList.remove('active');
       hud.classList.remove('hidden');
     },
+    focusPlay,
     render(state) {
       status.textContent = state.status;
       status.classList.toggle('bang', state.last?.type === 'hit' && state.over);
@@ -175,7 +213,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onAgain, onNext, on
       nextBtn.classList.toggle('hidden', !(state.over && ai && !state.matchOver));
       againBtn.classList.toggle('hidden', !(state.over && (state.mode !== 'ai' || state.matchOver)));
 
-      itemBar.innerHTML = '';
+      itemBar.textContent = '';
       if (ai && playable && state.spun && state.playerItems.length) {
         state.playerItems.forEach((item) => {
           const b = document.createElement('button');

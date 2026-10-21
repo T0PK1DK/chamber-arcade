@@ -9,6 +9,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+button, a { touch-action: manipulation; }
 
 html, body {
   width: 100%;
@@ -27,6 +28,18 @@ html, body {
   display: block;
 }
 
+.boot {
+  position: fixed;
+  left: 0; right: 0;
+  top: 42%;
+  text-align: center;
+  letter-spacing: 0.28em;
+  opacity: 0.7;
+  z-index: 6;
+  pointer-events: none;
+  text-shadow: 0 0 12px var(--green);
+}
+
 #scan {
   position: fixed;
   inset: 0;
@@ -40,6 +53,7 @@ html, body {
     transparent 4px
   );
 }
+#scan.off { display: none; }
 
 #vignette {
   position: fixed;
@@ -64,7 +78,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
 }
 .brand strong { letter-spacing: 0.28em; text-shadow: 0 0 10px var(--green); }
 .brand span { opacity: 0.5; margin-left: 0.6rem; font-size: 0.75rem; }
@@ -112,6 +126,7 @@ button {
   box-shadow: 0 0 12px rgba(57, 255, 20, 0.18);
 }
 button:hover:not(:disabled) { background: var(--green); color: #031003; }
+button:focus-visible { outline: 2px solid var(--warn); outline-offset: 3px; }
 button:disabled { opacity: 0.35; cursor: not-allowed; }
 button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
 .hidden { display: none !important; }
@@ -178,4 +193,9 @@ button.ghost { box-shadow: none; padding: 6px 10px; font-size: 0.75rem; }
 @media (max-width: 520px) {
   .panel { margin-bottom: 3.2rem; }
   button { padding: 11px 12px; font-size: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #scan { display: none; }
+  button, .status, .brand strong, h1 { text-shadow: none; }
 }
