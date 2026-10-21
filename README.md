@@ -1,26 +1,75 @@
 # CHAMBER // ARCADE
 
-A polished, self-contained Russian Roulette game with CRT phosphor-green arcade aesthetic.
+A CRT-green **3D** table game. Spin a toy six-chamber drum, keep a streak, or sit across from HOUSE for a best-of-three.
 
-**Fair. Fun. No real risk.**
+**Fair. Fun. No real risk.** Cartoon only — no gore, no realistic firearms.
+
+Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.pages.dev)
 
 ## Modes
-- **FAIR** — Cylinder re-spins every pull. Always exactly 1/6. Pure chance.
-- **CLASSIC** — Chamber advances. Odds rise with every safe click (1/6 → 1/5 → …).
-- **VS AI** — Take turns against the computer. First to hit loses.
+
+- **FAIR** — Drum re-spins every pull. Always exactly 1/6. Score is your safe streak.
+- **CLASSIC** — One load. The chamber advances. Odds rise 1/6 → 1/1.
+- **VS HOUSE** — Shared drum, turns alternate, first hit loses the round. Best of 3. Arcade chips: **SCOPE** (peek), **RACK** (eject), **STUN** (skip their next pull). Both kits stay visible.
 
 ## Features
-- Local high score (survival streak)
-- CRT scanlines + phosphor green glow
-- Click / bang sound effects (Web Audio)
-- Chamber visualization
-- Instant play — open `index.html`
 
-## Run
-Just open `index.html` in any modern browser. Works offline.
+- Three.js table, hanging lamp, visible 6-hole drum, seated HOUSE robot
+- Tension: camera ease-in, drum tick, phosphor flash, CRT scanlines
+- Local best streaks (Fair / Classic) and VS HOUSE win–loss
+- Shared `AudioContext`, mute (saved), keyboard (Space / Enter, Esc, M, 1–3)
+- Phone-first HUD, capped pixel ratio, adaptive quality if the frame rate dips
+
+Research behind the 3D pass (and what was *not* copied): [docs/RESEARCH.md](docs/RESEARCH.md).  
+Handoff for the next agent: [docs/HANDOFF.md](docs/HANDOFF.md).
+
+## Run locally
+
+Needs Node 20+.
+
+```bash
+npm install
+npm test
+npm run dev
+```
+
+Open the URL Vite prints (default `http://localhost:5173`).
+
+## Build (static files)
+
+```bash
+npm run build
+```
+
+Deploy the **`dist/`** folder. It is a static site (`index.html` + hashed assets). No server API.
+
+Preview the production bundle:
+
+```bash
+npm run preview
+```
+
+### Cloudflare Pages
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Node version | `20` |
+
+Do not upload `node_modules`. The old single-file `index.html` at repo root is now the Vite entry; Pages must run the build.
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| **SPIN** | Load the drum |
+| **PULL** | Advance the current chamber |
+| **SCOPE / RACK / STUN** | Use a chip (VS HOUSE) |
+| Space / Enter | Spin, pull, next round, or play again |
+| Esc | Menu |
+| M | Mute |
 
 ## Disclaimer
-Simulation only. No real firearms. For entertainment.
 
----
-Built for fun. Push to GitHub Pages if you want a live link.
+Simulation only. Toy drum. No real firearms. For entertainment.
