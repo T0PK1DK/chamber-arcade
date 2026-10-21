@@ -19,9 +19,11 @@ Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.page
 - Local best streaks (Fair / Classic) and VS HOUSE win–loss
 - Shared `AudioContext`, mute (saved), keyboard (Space / Enter, Esc, M, 1–3)
 - Phone-first HUD, capped pixel ratio, adaptive quality if the frame rate dips
+- Deferred Three.js boot, shared geometries, HOUSE visor tell, 3D kit tokens
+- Keyboard: 1/2/3 modes, Space/Enter play, Esc menu, M mute (Space cannot pull for HOUSE)
 
 Research behind the 3D pass (and what was *not* copied): [docs/RESEARCH.md](docs/RESEARCH.md).  
-Handoff for the next agent: [docs/HANDOFF.md](docs/HANDOFF.md).
+Handoff for the next agent: [docs/HANDOFF_3D.md](docs/HANDOFF_3D.md).
 
 ## Run locally
 
@@ -66,7 +68,8 @@ Do not upload `node_modules`. The old single-file `index.html` at repo root is n
 | **SPIN** | Load the drum |
 | **PULL** | Advance the current chamber |
 | **SCOPE / RACK / STUN** | Use a chip (VS HOUSE) |
-| Space / Enter | Spin, pull, next round, or play again |
+| Space / Enter | Spin, pull, next round, or play again (never HOUSE’s pull) |
+| 1 / 2 / 3 | Fair / Classic / VS HOUSE from the menu |
 | Esc | Menu |
 | M | Mute |
 

@@ -1,5 +1,7 @@
 # Handoff
 
+Overnight add-on pass (bugs, load/frame, polish, tests) is recorded in **[HANDOFF_3D.md](HANDOFF_3D.md)** — that file has the ready-to-paste Claude prompt.
+
 ## What shipped
 
 Chamber Arcade is no longer a single 2D `index.html`. It is a Vite + Three.js static app.

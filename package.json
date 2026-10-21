@@ -1,8 +1,9 @@
 {
   "name": "chamber-arcade",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
+  "sideEffects": false,
   "description": "CRT-green 3D chamber arcade. Fair / Classic / VS AI. Static build.",
   "scripts": {
     "dev": "vite",

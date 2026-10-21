@@ -10,6 +10,11 @@ export default defineConfig({
     minify: 'esbuild',
     cssMinify: true,
     chunkSizeWarningLimit: 700,
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter((d) => !d.includes('three'));
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

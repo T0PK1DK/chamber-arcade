@@ -7,6 +7,7 @@ import { loadMuted, saveMuted } from './storage.js';
 export function createAudio() {
   let ctx = null;
   let muted = loadMuted();
+  const jobs = [];
 
   function ac() {
     if (muted) return null;
@@ -17,6 +18,20 @@ export function createAudio() {
       ctx = null;
     }
     return ctx;
+  }
+
+  function later(ms, fn) {
+    const id = setTimeout(() => {
+      const i = jobs.indexOf(id);
+      if (i >= 0) jobs.splice(i, 1);
+      fn();
+    }, ms);
+    jobs.push(id);
+    return id;
+  }
+
+  function hush() {
+    jobs.splice(0).forEach(clearTimeout);
   }
 
   function tone(f0, f1, dur, vol, type = 'sine') {
@@ -59,7 +74,9 @@ export function createAudio() {
     setMuted(value) {
       muted = Boolean(value);
       saveMuted(muted);
+      if (muted) hush();
     },
+    hush,
     unlock() {
       ac();
     },
@@ -68,7 +85,7 @@ export function createAudio() {
     },
     spin() {
       for (let i = 0; i < 6; i += 1) {
-        setTimeout(() => tone(1300 + i * 40, null, 0.03, 0.045, 'square'), i * 85);
+        later(i * 85, () => tone(1300 + i * 40, null, 0.03, 0.045, 'square'));
       }
     },
     bang() {

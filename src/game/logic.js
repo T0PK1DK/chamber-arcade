@@ -50,6 +50,7 @@ export function createMatch(mode, rng = defaultRng) {
     playerItems: [],
     aiItems: [],
     peek: null,
+    tell: false,
     stunOn: null,
     status: mode === 'ai' ? 'SPIN TO LOAD — YOU PULL FIRST' : 'SPIN THE CYLINDER',
     last: null,
@@ -97,6 +98,7 @@ export function spin(state, rng = defaultRng) {
   state.spun = true;
   state.pulls = 0;
   state.peek = null;
+  state.tell = false;
   state.status = 'READY — PULL';
   state.last = { type: 'spin', current: state.current, bullet: state.bullet };
   return { ok: true };
@@ -106,6 +108,7 @@ function finishHit(state, byAi) {
   state.over = true;
   state.busy = false;
   state.peek = null;
+  state.tell = false;
   state.last = { type: 'hit', byAi };
   if (state.mode === 'ai') {
     if (byAi) {
@@ -157,14 +160,17 @@ function passTurn(state, fromAi) {
   }
 }
 
-export function pull(state) {
+export function pull(state, who = 'auto') {
   const byAi = state.mode === 'ai' && state.aiTurn;
+  if (who === 'player' && byAi) return { ok: false, reason: 'ai-turn' };
+  if (who === 'ai' && !byAi) return { ok: false, reason: 'player-turn' };
   if (state.over || state.matchOver || !state.spun) return { ok: false, reason: 'locked' };
   if (!byAi && state.busy) return { ok: false, reason: 'busy' };
 
   const hit = state.current === state.bullet;
   state.pulls += 1;
   state.peek = null;
+  state.tell = false;
 
   if (hit) {
     finishHit(state, byAi);
@@ -195,6 +201,7 @@ export function useItem(state, item, who = 'player') {
 
   if (item === ITEMS.scope) {
     state.peek = state.current === state.bullet ? 'live' : 'blank';
+    if (who === 'ai') state.tell = state.peek === 'live';
     state.status = who === 'player'
       ? (state.peek === 'live' ? 'SCOPE: THIS CHAMBER IS LIVE' : 'SCOPE: THIS CHAMBER IS EMPTY')
       : 'HOUSE PEEKS THE CHAMBER';
@@ -207,6 +214,7 @@ export function useItem(state, item, who = 'player') {
     state.pulls += 1;
     state.current = (state.current + 1) % CHAMBERS;
     state.peek = null;
+    state.tell = false;
     if (wasLive) {
       state.spun = false;
       state.bullet = -1;
@@ -244,6 +252,7 @@ export function nextRound(state, rng = defaultRng) {
   state.busy = false;
   state.winner = null;
   state.peek = null;
+  state.tell = false;
   state.stunOn = null;
   state.playerItems = [];
   state.aiItems = [];
