@@ -81,6 +81,8 @@ export function createMatch(mode, rng = defaultRng) {
     pot: 0,
     cashed: 0,
     passes: { player: 0, ai: 0 },
+    persona: null,
+    opponentId: null,
     status: mode === 'ai' ? 'SPIN TO LOAD — YOU PULL FIRST' : 'SPIN THE CYLINDER',
     last: null,
   };

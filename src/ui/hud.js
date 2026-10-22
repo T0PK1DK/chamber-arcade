@@ -1,4 +1,5 @@
 import { CHAMBERS, ITEMS, STAKE, canCashOut, canPass, oddsDenom } from '../game/logic.js';
+import { tableLiveText } from '../game/announce.js';
 import {
   loadScores,
   loadAdultOk,
@@ -38,25 +39,25 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
       </div>
       <div class="top-btns">
         <button type="button" id="textBtn" class="ghost" aria-pressed="false" aria-label="Larger text">A+</button>
-        <button type="button" id="goreBtn" class="ghost" aria-pressed="true">BLOOD ON</button>
-        <button type="button" id="muteBtn" class="ghost" aria-pressed="false">SOUND ON</button>
+        <button type="button" id="goreBtn" class="ghost" aria-pressed="true" aria-label="Blood effects on">BLOOD ON</button>
+        <button type="button" id="muteBtn" class="ghost" aria-pressed="false" aria-label="Sound on">SOUND ON</button>
       </div>
     </header>
 
     <p id="bootLine" class="boot" hidden>Lighting the table…</p>
 
-    <section id="gate" class="panel gate" aria-labelledby="gateTitle" hidden>
+    <section id="gate" class="panel gate" aria-labelledby="gateTitle" tabindex="-1" hidden>
       <h1 id="gateTitle">18+</h1>
       <p class="lead">This is a game of Russian roulette with a revolver.</p>
       <p>It contains <strong>guns, blood and simulated violence</strong>. It's played with play money only. You can switch blood off any time with the <strong>BLOOD</strong> button.</p>
       <div class="gate-btns">
         <button type="button" id="gateYes" class="primary">I'M 18 OR OLDER</button>
-        <a class="button ghost" href="https://www.google.com/">LEAVE</a>
+        <a class="button ghost" href="https://www.google.com/" aria-label="Leave this site">LEAVE</a>
       </div>
       <p class="care">Having a hard time? In the US, call or text <strong>988</strong>, any hour. Elsewhere, contact your local crisis line.</p>
     </section>
 
-    <section id="menu" class="panel menu" aria-label="Choose a game">
+    <section id="menu" class="panel menu" aria-label="Choose a game" tabindex="-1">
       <h1>CHAMBER</h1>
       <p class="sub">Six chambers · One round · Your nerve</p>
       <div class="modes">
@@ -88,10 +89,11 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
       </details>
     </section>
 
-    <section id="hud" class="hud hidden" aria-live="off">
+    <section id="hud" class="hud hidden" aria-label="Table" tabindex="-1">
+      <p id="tableLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <div class="banner">
         <p id="turn" class="turn"></p>
-        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">READY</p>
+        <p id="status" class="status" aria-hidden="true">READY</p>
         <p id="match" class="match"></p>
       </div>
       <div class="dial-row">
@@ -104,12 +106,12 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
       </div>
       <div id="kits" class="kits hidden">
         <div><small>YOU</small><div id="youKit" class="chips"></div></div>
-        <div><small>HOUSE</small><div id="houseKit" class="chips"></div></div>
+        <div><small id="houseKitLabel">HOUSE</small><div id="houseKit" class="chips"></div></div>
       </div>
       <p id="hint" class="hint" aria-hidden="true"></p>
-      <div class="actions">
-        <button type="button" id="menuBtn" class="ghost side" aria-label="Menu">MENU</button>
-        <button type="button" id="cashBtn" class="cash hidden">CASH OUT</button>
+      <div class="actions" id="actions">
+        <button type="button" id="menuBtn" class="ghost side" aria-label="Back to menu">MENU</button>
+        <button type="button" id="cashBtn" class="cash hidden" aria-keyshortcuts="C">CASH OUT</button>
         <button type="button" id="shootBtn" class="shoot hidden" aria-keyshortcuts="O">SHOOT HOUSE</button>
         <button type="button" id="passBtn" class="ghost side hidden" aria-keyshortcuts="P">PASS</button>
         <button type="button" id="spinBtn" class="primary">SPIN</button>
@@ -141,6 +143,9 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
   const kits = $('kits');
   const youKit = $('youKit');
   const houseKit = $('houseKit');
+  const houseKitLabel = $('houseKitLabel');
+  const tableLive = $('tableLive');
+  const skipLink = document.getElementById('skipLink');
   const spinBtn = $('spinBtn');
   const fireBtn = $('fireBtn');
   const cashBtn = $('cashBtn');
@@ -163,6 +168,7 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
     gore = on;
     goreBtn.textContent = on ? 'BLOOD ON' : 'BLOOD OFF';
     goreBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    goreBtn.setAttribute('aria-label', on ? 'Blood effects on' : 'Blood effects off');
     if (!on && splatEl) splatEl.className = '';
   }
   setGore(gore);
@@ -198,9 +204,18 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
   }
 
   let adult = loadAdultOk();
+  function setSkip(target, label) {
+    if (!skipLink) return;
+    skipLink.setAttribute('href', target);
+    skipLink.textContent = label;
+  }
+
   function applyGate() {
     gate.hidden = adult;
     menu.classList.toggle('active', adult && hud.classList.contains('hidden'));
+    if (hud.classList.contains('hidden')) {
+      setSkip(adult ? '#menu' : '#gate', adult ? 'Skip to menu' : 'Skip to age check');
+    }
   }
   $('gateYes').addEventListener('click', () => {
     adult = true;
@@ -332,6 +347,7 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
     },
     setOpponent(title) {
       opponent = title || 'HOUSE';
+      if (houseKitLabel) houseKitLabel.textContent = opponent.replace(/^THE /, '');
     },
     clearSplat() {
       if (splatEl) splatEl.className = '';
@@ -339,6 +355,7 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
     setMuted(muted) {
       muteBtn.textContent = `SOUND ${muted ? 'OFF' : 'ON'}`;
       muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+      muteBtn.setAttribute('aria-label', muted ? 'Sound off' : 'Sound on');
     },
     setBoot(msg) {
       if (!msg) {
@@ -355,6 +372,7 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
     },
     showMenu() {
       hud.classList.add('hidden');
+      hud.removeAttribute('aria-busy');
       applyGate();
       paintScores();
       if (adult) menu.querySelector('[data-mode]')?.focus({ preventScroll: true });
@@ -362,6 +380,7 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
     showGame() {
       menu.classList.remove('active');
       hud.classList.remove('hidden');
+      setSkip('#hud', 'Skip to table');
     },
     focusPlay,
     setHold(progress, x, y) {
@@ -454,7 +473,8 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
           turn.classList.remove('ai');
         }
       } else {
-        turn.textContent = '';
+        turn.textContent = state.over ? (state.winner === 'cash' ? 'CASHED OUT' : 'RUN OVER') : (state.spun ? 'YOUR MOVE' : 'SPIN TO LOAD');
+        turn.classList.remove('ai');
         match.textContent = '';
       }
 
@@ -480,6 +500,13 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
         : !state.spun ? 'or swipe the table to spin'
           : ai ? 'survive your own shot and you keep the revolver'
             : 'or press and hold the table to pull';
+
+      hud.setAttribute('aria-busy', ai && state.aiTurn && !state.over ? 'true' : 'false');
+      const spoken = tableLiveText(state, opponent);
+      if (tableLive.textContent !== spoken) tableLive.textContent = spoken;
+      turn.setAttribute('aria-label', turn.textContent || 'No turn');
+      odds.setAttribute('aria-label', odds.textContent || 'Odds hidden');
+      pot.setAttribute('aria-label', `${potLabel.textContent} ${pot.textContent}`);
     },
   };
 }

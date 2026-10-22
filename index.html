@@ -10,10 +10,13 @@
   <style>
     html,body{background:#0b0807;color:#d8b25a;margin:0;height:100%;font-family:Georgia,'Times New Roman',serif}
     .boot{position:fixed;left:0;right:0;top:42%;text-align:center;letter-spacing:.28em}
+    .skip{position:fixed;left:12px;top:12px;z-index:30;padding:12px 18px;background:#d8b25a;color:#1a1208;font-weight:700;text-decoration:none;transform:translateY(-160%)}
+    .skip:focus{transform:none}
   </style>
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
+  <a class="skip" id="skipLink" href="#menu">Skip to menu</a>
   <canvas id="stage" aria-hidden="true"></canvas>
   <div id="vignette"></div>
   <div id="scan"></div>

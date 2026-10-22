@@ -17,6 +17,7 @@ Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.page
 - Three.js backroom: lamp pool on green baize, primitive-built revolver, HOUSE in a suit and fedora
 - The ritual: revolver to the temple, hammer back, heartbeat, then a dry click or a hard cut to black
 - Muzzle flash, smoke, recoil, blood spray, spatter and pooling (toggleable); blued / nickel / gold revolver
+- Six opponents with their own aggression / caution / tell; skip link and a live table readout for screen readers
 - Best cash-out per mode and duel win–loss saved locally; 18+ gate; **A+** larger-text toggle
 - Shared `AudioContext`, mute (saved), keyboard (Space / Enter, C cash out, R re-spin, Esc, M, 1–3)
 - Phone-first HUD, capped pixel ratio, adaptive quality if the frame rate dips

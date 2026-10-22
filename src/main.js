@@ -11,7 +11,7 @@ import {
   cashOut,
   pass,
 } from './game/logic.js';
-import { pickCharacter } from './game/characters.js';
+import { pickCharacter, resolvePersona } from './game/characters.js';
 import { decideAi } from './game/ai.js';
 import { createAudio } from './game/audio.js';
 import { saveBestCash, recordAiMatch } from './game/storage.js';
@@ -263,7 +263,7 @@ function doCash() {
 function queueAi() {
   later(520, () => {
     if (!state || !state.aiTurn || state.over || !world) return;
-    const choice = decideAi(state);
+    const choice = decideAi(state, Math.random, state.persona);
     if (choice.type === 'item') {
       useItem(state, choice.item, 'ai');
       if (choice.item === ITEMS.respin) spinFx();
@@ -290,6 +290,10 @@ function queueAi() {
 function seatOpponent() {
   const c = pickCharacter(Math.random, opponentId);
   opponentId = c.id;
+  if (state) {
+    state.opponentId = c.id;
+    state.persona = resolvePersona(c.persona);
+  }
   world.setOpponent(c);
   hud.setOpponent(c.title);
 }

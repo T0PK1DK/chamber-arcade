@@ -66,6 +66,7 @@ The owner asked for "a real Russian roulette game … fun for the older crowd". 
   - Known chamber: decides the aim.
   - 1 in 3 or worse: shoots you. 1 in 4: mostly shoots you.
   - Long odds: mostly shoots itself, sometimes you, rarely passes.
+  - Each of the six seats now has an aggression / caution / tell profile. That bends self-vs-other, pass timing, and peek frequency around the table above. THE STRANGER is the unmodified HOUSE midpoint.
 - **People** (`src/game/characters.js`, tested): six looks with table nicknames only (THE BANKER, THE CAPTAIN, THE WIDOW, THE GAMBLER, THE STRANGER, THE PROFESSOR). `dealer.js` builds a primitive human (face, hair, facial hair, glasses, hat, suit, two-joint arms) and `setLook()` swaps it each match.
 - **Poses** (`revolver.js`): `aimHouse` (first person, scaled, raised on portrait) and `atPlayer` (in their hand, barrel at the camera). `dealer.setAim('temple' | 'you')`. Moods: `'out'` (slumps after their own shot) and `'shot'` (knocked back when you hit them).
 - **HUD**: SHOOT [NAME] (`O`), SHOOT YOURSELF (`Space`, or hold the table), PASS (`P`). Status text swaps HOUSE for the opponent's nickname.
@@ -122,7 +123,7 @@ public/_headers            Pages cache (not a deploy)
 2. **One more Fair/Classic chip** if those modes feel thin (a solo peek that costs the streak if live). Do not paste Buckshot item names.
 3. **GLB HOUSE** only if it stays < ~100 KB and still cartoon. Primitives are the right default.
 4. **Pages deploy** — owner runs Cloudflare with `npm run build` / `dist`. This branch does not flip the live 2D site.
-5. **A11y** beyond the live status + focus move (skip-to-menu, contrast on `.turn.ai`).
+5. **A11y shipped:** skip-to-menu / skip-to-table, a single live region for turn / chambers / odds / pot / result (`src/game/announce.js`), HUD contrast locked in `tests/contrast.test.js`, focus rings on every control.
 
 ## Prompt for the next Claude
 

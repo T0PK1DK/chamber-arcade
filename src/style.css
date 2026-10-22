@@ -6,9 +6,10 @@
   color-scheme: dark;
   --ink: #0b0807;
   --cream: #f1e8d4;
-  --dim: #b9ad96;
+  --dim: #c9bda6;
   --brass: #d8b25a;
   --ember: #ff8a4a;
+  --ember-text: #ffc090;
   --bang: #ff6a52;
   --win: #e9cf7a;
   --panel: rgba(14, 10, 8, 0.86);
@@ -119,7 +120,40 @@ body.aim #vignette {
   flex-direction: column;
   pointer-events: none;
 }
-#app button, #app a, #app .panel, #app .hud { pointer-events: auto; }
+#app button, #app a, #app .panel, #app .hud, #app .skip { pointer-events: auto; }
+
+.skip {
+  position: fixed;
+  left: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  z-index: 30;
+  padding: 12px 18px;
+  min-height: 48px;
+  background: var(--brass);
+  color: #1a1208;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  border-radius: 6px;
+  transform: translateY(-180%);
+  transition: transform 0.12s ease-out;
+}
+.skip:focus, .skip:focus-visible {
+  transform: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .top {
   display: flex;
@@ -204,7 +238,30 @@ button, a.button {
 @media (hover: hover) {
   button:hover:not(:disabled), a.button:hover { background: var(--brass); color: #1a1208; }
 }
-button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+button:focus-visible,
+a:focus-visible,
+a.button:focus-visible,
+summary:focus-visible,
+.chip.use:focus-visible,
+.skip:focus-visible {
+  outline: 3px solid var(--cream);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(11, 8, 7, 0.9);
+}
+button:focus,
+a.button:focus,
+summary:focus,
+.chip.use:focus {
+  outline: 3px solid var(--cream);
+  outline-offset: 3px;
+}
+button:focus:not(:focus-visible):not(.skip),
+a.button:focus:not(:focus-visible),
+summary:focus:not(:focus-visible),
+.chip.use:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 .ghost { border-color: rgba(216, 178, 90, 0.55); font-weight: 500; }
 .top .ghost { min-height: 44px; padding: 6px 8px; font-size: 0.7rem; letter-spacing: 0.03em; white-space: nowrap; }
@@ -233,11 +290,14 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   max-width: 34rem;
   align-self: center;
   padding: 0 12px calc(26px + env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, rgba(8, 6, 5, 0.8) 18%, rgba(8, 6, 5, 0.92));
+  background: linear-gradient(to bottom, transparent, rgba(8, 6, 5, 0.88) 16%, rgba(8, 6, 5, 0.96));
 }
 .banner { text-align: center; }
+.turn, .status, .match, .odds, .money, .safe {
+  text-shadow: 0 1px 2px #0b0807, 0 0 10px rgba(11, 8, 7, 0.85);
+}
 .turn { min-height: 1.2rem; letter-spacing: 0.18em; font-size: 0.8rem; color: var(--dim); }
-.turn.ai { color: var(--ember); }
+.turn.ai { color: var(--ember-text); font-weight: 700; }
 .status { font-family: var(--serif); font-size: clamp(1.35rem, 5vw, 1.7rem); min-height: 2.2rem; margin: 0.1rem 0; font-weight: 600; }
 .status.bang { color: var(--bang); }
 .status.win { color: var(--win); }
@@ -271,7 +331,7 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
 .readout { text-align: left; }
 .readout p { margin: 0.1rem 0; }
 .odds { font-weight: 700; letter-spacing: 0.06em; min-height: 1.4rem; }
-.odds.warn { color: var(--ember); }
+.odds.warn { color: var(--ember-text); }
 .odds.danger { color: var(--bang); animation: throb 0.7s ease-in-out infinite alternate; }
 .money { font-size: 1.05rem; color: var(--dim); }
 .money strong { color: var(--win); font-family: var(--serif); font-size: 1.35rem; }
@@ -354,7 +414,7 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   letter-spacing: 0.12em;
   border-color: var(--bang);
   color: #fff4ee;
-  background: rgba(200, 40, 30, 0.55);
+  background: #8c1c16;
 }
 @media (hover: hover) { .actions .shoot:hover:not(:disabled) { background: var(--bang); color: #1a0500; } }
 .actions button:active:not(:disabled) { transform: scale(0.97); }
@@ -387,12 +447,13 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   position: fixed;
   left: 0; right: 0; bottom: calc(5px + env(safe-area-inset-bottom));
   text-align: center;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: var(--dim);
-  opacity: 0.75;
+  opacity: 0.92;
   letter-spacing: 0.08em;
   pointer-events: none;
   z-index: 6;
+  text-shadow: 0 1px 2px #0b0807;
 }
 
 @media (max-width: 520px) {
