@@ -1,26 +1,28 @@
-# CHAMBER // ARCADE
+# CHAMBER — Russian Roulette
 
-A CRT-green **3D** table game. Spin a toy six-chamber drum, keep a streak, or sit across from HOUSE for a best-of-three.
+A noir **3D** Russian roulette table for adults (18+). One revolver, six chambers, one round. Push your luck for a growing pot and cash out in time, or sit across from HOUSE for a best-of-three duel.
 
-**Fair. Fun. No real risk.** Cartoon only — no gore, no realistic firearms.
+**18+. Guns, blood and violence; play money only.** Blood can be switched off with the BLOOD button.
 
 Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.pages.dev)
 
 ## Modes
 
-- **FAIR** — Drum re-spins every pull. Always exactly 1/6. Score is your safe streak.
-- **CLASSIC** — One load. The chamber advances. Odds rise 1/6 → 1/1.
-- **VS HOUSE** — Shared drum, turns alternate, first hit loses the round. Best of 3. Arcade chips: **SCOPE** (peek), **RACK** (eject), **STUN** (skip their next pull). Both kits stay visible.
+- **ONE SPIN** (`classic`): spin once, keep pulling. Odds go 1/6 → 1/5 → … → 1/1. The $100 stake grows at fair odds ($120, $150, $200, $300, $600). **Cash out** any time after your first click.
+- **SPIN EVERY PULL** (`fair`): the cylinder is re-spun every pull, so it's always 1 in 6. The pot grows ×1.2 per click.
+- **DUEL A STRANGER** (`ai`): a new opponent sits down each match (six distinct people). On your turn, **shoot yourself** (an empty chamber means you keep the revolver), **shoot them** (an empty chamber passes it), or **pass** once per round. Whoever takes the round loses it. Best of 3.
 
 ## Features
 
-- Three.js table, hanging lamp, visible 6-hole drum, seated HOUSE robot
-- Tension: camera ease-in, drum tick, phosphor flash, CRT scanlines
-- Local best streaks (Fair / Classic) and VS HOUSE win–loss
-- Shared `AudioContext`, mute (saved), keyboard (Space / Enter, Esc, M, 1–3)
+- Three.js backroom: lamp pool on green baize, primitive-built revolver, HOUSE in a suit and fedora
+- The ritual: revolver to the temple, hammer back, heartbeat, then a dry click or a hard cut to black
+- Muzzle flash, smoke, recoil, blood spray, spatter and pooling (toggleable); blued / nickel / gold revolver
+- Six opponents with their own aggression / caution / tell; skip link and a live table readout for screen readers
+- Best cash-out per mode and duel win–loss saved locally; 18+ gate; **A+** larger-text toggle
+- Shared `AudioContext`, mute (saved), keyboard (Space / Enter, C cash out, R re-spin, Esc, M, 1–3)
 - Phone-first HUD, capped pixel ratio, adaptive quality if the frame rate dips
 - Deferred Three.js boot, shared geometries, HOUSE visor tell, 3D kit tokens
-- Keyboard: 1/2/3 modes, Space/Enter play, Esc menu, M mute (Space cannot pull for HOUSE)
+- Phone: swipe the table to spin, press and hold to pull (Space and touch can never pull for HOUSE)
 
 Research behind the 3D pass (and what was *not* copied): [docs/RESEARCH.md](docs/RESEARCH.md).  
 Handoff for the next agent: [docs/HANDOFF_3D.md](docs/HANDOFF_3D.md).

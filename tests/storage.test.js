@@ -24,6 +24,15 @@ const {
   loadMuted,
   saveMuted,
   migrate,
+  saveBestCash,
+  loadAdultOk,
+  saveAdultOk,
+  loadBigText,
+  saveBigText,
+  loadGore,
+  saveGore,
+  loadFinish,
+  saveFinish,
 } = await import('../src/game/storage.js');
 
 beforeEach(() => {
@@ -68,4 +77,43 @@ test('mute persists as 1/0', () => {
   assert.equal(loadMuted(), true);
   saveMuted(false);
   assert.equal(loadMuted(), false);
+});
+
+test('best cash-out keeps only the record per solo mode', () => {
+  assert.equal(saveBestCash('classic', 200), true);
+  assert.equal(saveBestCash('classic', 150), false);
+  assert.equal(saveBestCash('fair', 144), true);
+  assert.equal(saveBestCash('ai', 999), false);
+  const s = loadScores();
+  assert.equal(s.classicCash, 200);
+  assert.equal(s.fairCash, 144);
+});
+
+test('18+ gate and big text persist', () => {
+  assert.equal(loadAdultOk(), false);
+  saveAdultOk();
+  assert.equal(loadAdultOk(), true);
+  assert.equal(loadBigText(), false);
+  saveBigText(true);
+  assert.equal(loadBigText(), true);
+  saveBigText(false);
+  assert.equal(loadBigText(), false);
+});
+
+test('blood defaults on and the toggle persists', () => {
+  assert.equal(loadGore(), true);
+  saveGore(false);
+  assert.equal(loadGore(), false);
+  saveGore(true);
+  assert.equal(loadGore(), true);
+});
+
+test('revolver finish persists and rejects junk', () => {
+  assert.equal(loadFinish(), 'blued');
+  saveFinish('gold');
+  assert.equal(loadFinish(), 'gold');
+  saveFinish('rainbow');
+  assert.equal(loadFinish(), 'gold');
+  mem.set('chamberFinish', 'hacked');
+  assert.equal(loadFinish(), 'blued');
 });

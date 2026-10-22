@@ -142,3 +142,50 @@ Intentionally **not** borrowed: shotgun vs self-or-opponent aiming, defibrillato
 3. Phone-first: one canvas, overlay HUD, pixel-ratio cap, no font CDN, no huge textures.
 4. Cartoon + phosphor green. Simulation disclaimer stays on screen.
 5. Static hosting (`dist/` after `npm run build`).
+
+---
+
+## 4. "Make it real Russian roulette" pass (owner request, 2026-10-21)
+
+The owner asked for a real Russian roulette game, fun for an older (adult) crowd. This pass drops the toy-drum arcade framing for a realistic revolver and a noir backroom, but keeps **no gore** and adds an **18+ gate**.
+
+### The real thing, as a game
+
+- Russian roulette has a literary origin, not a documented military one. Lermontov's *A Hero of Our Time* (1840, "The Fatalist") has an officer test fate with a pistol to his own head. The name comes from Georges Surdez's story "Russian Roulette" in *Collier's* (30 January 1937). The earliest newspaper death reports date from 1938. ([Wikipedia](https://en.wikipedia.org/wiki/Russian_roulette), [Swiss National Museum blog](https://blog.nationalmuseum.ch/en/2025/01/invention-of-russian-roulette/), [Straight Dope](https://www.straightdope.com/21342497/did-the-russians-ever-play-russian-roulette), [Today I Found Out](https://www.todayifoundout.com/index.php/2020/10/who-invented-russian-roulette-and-has-anyone-ever-actually-played-it/))
+- Two real variants map onto the existing modes. **Spin every pull** is always 1 in 6 (FAIR). **One spin** keeps pulling, so the odds go 1/6 → 1/5 → … → 1/1 (CLASSIC). A **re-spin before your pull** is the classic house rule that gives a two-player duel a real decision. It replaces the arcade chips.
+
+### Why adults find these games fun
+
+- **Liar's Bar** (2024) put Russian roulette at the end of a bluffing card game. Its revolver is "1 lethal + 5 blanks", so every survived pull raises the odds. Reviews credit the tension of reading the opponent, then handing the outcome to pure luck. It passed 110k concurrent players at launch. ([Wikipedia](https://en.wikipedia.org/wiki/Liar%27s_Bar), [Steam](https://store.steampowered.com/app/3097560/Liars_Bar/), [rules write-up](https://debigare.com/how-to-play-liars-deck-from-liars-bar-full-rules-and-variants), [PCGamesN](https://www.pcgamesn.com/liars-bar/early-access-launch))
+- **Push-your-luck** is the strongest adult hook for a solo game. The only real choice is *stop and keep it, or risk it all for more*, and the tension builds as the stakes grow. Zombie Dice and crash-style games are the purest examples. ([co-optimus](https://www.co-optimus.com/blog/article-poster/3326/risk-timing-and-nerve-the-game-mechanics-that-test-when-to-cash-out.html), [I Slay the Dragon](https://islaythedragon.com/guides/a-guide-to-pressing-your-luck))
+  - **What we built:** a $100 stake that grows at **fair odds** on every safe pull. In One Spin that's 6/(6 − n) × stake: $120, $150, $200, $300, $600. There's a **Cash out** button. No house edge, so the only variable is nerve. A unit test proves the expected value of one more pull equals what you hold.
+- Buckshot Roulette (section 1) showed that a dim table, a seated opponent and one sound-led moment are the whole fantasy. We still borrow none of its names or items.
+
+### Designing for older eyes and hands
+
+- A systematic review found older adults prefer larger type, up to a point. Practitioner guides converge on 16 px+ body text, a user-adjustable size, high contrast (WCAG AA 4.5:1, ideally 7:1), touch targets well above 44 px with spacing between them, text labels on controls, and clear tap feedback. ([PMC systematic review](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9376262/), [arXiv touchscreen guideline review](https://arxiv.org/pdf/1703.06317), [UX Collective checklist](https://uxdesign.cc/designing-for-older-audiences-checklist-best-practices-b6ca3ec5bcbf), [UX Collective guide](https://uxdesign.cc/a-guide-to-interface-design-for-older-adults-31109468d46d), [50+ game design guide](https://wikidocs.net/155867))
+  - **What we built:** an 18 px base with an **A+** toggle (~21 px, saved). Cream on near-black, well above 7:1. 56–68 px buttons. Plain-language buttons ("PULL THE TRIGGER", "CASH OUT $150"). Odds in words ("1 IN 4 IS LIVE"). A six-pip cylinder dial. A How to play section on the menu.
+
+### Blood pass (owner request, same day)
+
+The owner asked for real gore, guns and effects for the 18+ audience, pointing to Roblox games in the same lane. We added **M-rated game blood** with a player toggle:
+
+- **HOUSE takes the round:** muzzle flash, barrel smoke, a blood spray out the far side of the head, spatter on the wall and felt, and a pool that spreads under it after it slumps.
+- **You take the round:** blood hits the lens, then the screen cuts to black with a ringing ear.
+- **BLOOD ON/OFF** button (default on, saved). With it off you get the earlier clean version.
+- **Guns:** a choice of three revolver finishes (blued, nickel, gold), harder recoil, and a layered gunshot with two room echoes.
+
+**Deliberate limit:** no wound modelling, dismemberment or head damage. Blood effects carry the moment without a detailed depiction of a self-inflicted gunshot.
+
+### Lines we kept
+- **18+ gate** on first visit, now naming guns, blood and violence, plus a one-line 988 crisis-line note. The theme is self-harm-adjacent, and the note costs nothing.
+- **Play money only.** No real-money wagering, no purchases.
+
+### Aim duel (owner request: "pass or shoot or aim at the person like that one Roblox game")
+
+The Roblox BUCKSHOT tables (section 2) and Buckshot Roulette (section 1) both hinge on one rule: **you choose who to shoot, and a blank on yourself keeps your turn.** On a six-shot revolver that creates a real decision:
+- Every empty chamber raises the odds on the next one.
+- Surviving your own shot keeps the revolver, so your next shot at them comes at shorter odds.
+- Shooting them early on long odds usually just hands them a better shot at you.
+
+We kept that verb set (shoot self, shoot opponent, pass once per round) and none of the shotgun games' items, names or assets. The opponent is a rotating cast of six people, built from primitives and identified only by table nicknames.

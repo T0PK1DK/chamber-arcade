@@ -4,6 +4,12 @@ const KEYS = {
   aiWins: 'chamberAiWins',
   aiLosses: 'chamberAiLosses',
   muted: 'chamberMuted',
+  fairCash: 'chamberCash_fair',
+  classicCash: 'chamberCash_classic',
+  adult: 'chamberAdultOk',
+  bigText: 'chamberBigText',
+  gore: 'chamberGore',
+  finish: 'chamberFinish',
   legacy: 'chamberBest',
 };
 
@@ -39,7 +45,36 @@ export function loadScores() {
     classic: num(KEYS.classic),
     aiWins: num(KEYS.aiWins),
     aiLosses: num(KEYS.aiLosses),
+    fairCash: num(KEYS.fairCash),
+    classicCash: num(KEYS.classicCash),
   };
+}
+
+/** Best cash-out per solo mode. Returns true on a new record. */
+export function saveBestCash(mode, pot) {
+  if (mode !== 'fair' && mode !== 'classic') return false;
+  const key = mode === 'fair' ? KEYS.fairCash : KEYS.classicCash;
+  if (pot > num(key)) {
+    rawSet(key, pot);
+    return true;
+  }
+  return false;
+}
+
+export function loadAdultOk() {
+  return rawGet(KEYS.adult) === '1';
+}
+
+export function saveAdultOk() {
+  rawSet(KEYS.adult, '1');
+}
+
+export function loadBigText() {
+  return rawGet(KEYS.bigText) === '1';
+}
+
+export function saveBigText(on) {
+  rawSet(KEYS.bigText, on ? '1' : '0');
 }
 
 export function saveBest(mode, survived) {
@@ -63,4 +98,24 @@ export function loadMuted() {
 
 export function saveMuted(muted) {
   rawSet(KEYS.muted, muted ? '1' : '0');
+}
+
+/** Blood effects default ON for the 18+ audience; the toggle turns them off. */
+export function loadGore() {
+  return rawGet(KEYS.gore) !== '0';
+}
+
+export function saveGore(on) {
+  rawSet(KEYS.gore, on ? '1' : '0');
+}
+
+const FINISH_SET = new Set(['blued', 'nickel', 'gold']);
+
+export function loadFinish() {
+  const f = rawGet(KEYS.finish);
+  return FINISH_SET.has(f) ? f : 'blued';
+}
+
+export function saveFinish(name) {
+  if (FINISH_SET.has(name)) rawSet(KEYS.finish, name);
 }

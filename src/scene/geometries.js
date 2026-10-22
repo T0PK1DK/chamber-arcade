@@ -5,6 +5,7 @@ import {
   PlaneGeometry,
   RingGeometry,
   SphereGeometry,
+  TorusGeometry,
 } from 'three';
 
 /**
@@ -32,11 +33,18 @@ export function createGeometries() {
     cylinder(rt, rb, h, seg) {
       return get(`cyl:${rt}:${rb}:${h}:${seg}`, () => new CylinderGeometry(rt, rb, h, seg));
     },
+    /** Top hemisphere: hairlines, beards (flipped), hat crowns. */
+    dome(r, w = 16, h = 8) {
+      return get(`dome:${r}:${w}:${h}`, () => new SphereGeometry(r, w, h, 0, Math.PI * 2, 0, Math.PI / 2));
+    },
     sphere(r, w, h) {
       return get(`sph:${r}:${w}:${h}`, () => new SphereGeometry(r, w, h));
     },
     circle(r, seg) {
       return get(`cir:${r}:${seg}`, () => new CircleGeometry(r, seg));
+    },
+    torus(r, tube, rs, ts, arc) {
+      return get(`tor:${r}:${tube}:${rs}:${ts}:${arc}`, () => new TorusGeometry(r, tube, rs, ts, arc));
     },
     ring(inner, outer, seg) {
       return get(`ring:${inner}:${outer}:${seg}`, () => new RingGeometry(inner, outer, seg));
