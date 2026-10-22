@@ -180,3 +180,12 @@ The owner asked for real gore, guns and effects for the 18+ audience, pointing t
 ### Lines we kept
 - **18+ gate** on first visit, now naming guns, blood and violence, plus a one-line 988 crisis-line note. The theme is self-harm-adjacent, and the note costs nothing.
 - **Play money only.** No real-money wagering, no purchases.
+
+### Aim duel (owner request: "pass or shoot or aim at the person like that one Roblox game")
+
+The Roblox BUCKSHOT tables (section 2) and Buckshot Roulette (section 1) both hinge on one rule: **you choose who to shoot, and a blank on yourself keeps your turn.** On a six-shot revolver that creates a real decision:
+- Every empty chamber raises the odds on the next one.
+- Surviving your own shot keeps the revolver, so your next shot at them comes at shorter odds.
+- Shooting them early on long odds usually just hands them a better shot at you.
+
+We kept that verb set (shoot self, shoot opponent, pass once per round) and none of the shotgun games' items, names or assets. The opponent is a rotating cast of six people, built from primitives and identified only by table nicknames.

@@ -56,6 +56,20 @@ The owner asked for "a real Russian roulette game … fun for the older crowd". 
 - **Hits with blood on:** yours puts blood on the lens, then cuts to black. HOUSE's sprays out the far side, spatters the wall and felt, and pools after it slumps.
 - **Limit:** blood only. No wound modelling, dismemberment or head damage.
 
+## Aim duel + people pass (owner request: "real people … pass or shoot or aim at the person")
+
+- **Rules** (`logic.js`, tests in `tests/stakes.test.js`, `tests/ai.test.js`): `pull(state, who, target = 'self')`.
+  - Duel `self` blank keeps your turn. `other` blank passes it. A hit loses the round for whoever was aimed at (`result.victim`).
+  - `pass(state, who)` works once per side per round (`state.passes`).
+  - The duel deals no chips now. Solo modes ignore `target`.
+- **HOUSE AI** (`ai.js`, injectable rng):
+  - Known chamber: decides the aim.
+  - 1 in 3 or worse: shoots you. 1 in 4: mostly shoots you.
+  - Long odds: mostly shoots itself, sometimes you, rarely passes.
+- **People** (`src/game/characters.js`, tested): six looks with table nicknames only (THE BANKER, THE CAPTAIN, THE WIDOW, THE GAMBLER, THE STRANGER, THE PROFESSOR). `dealer.js` builds a primitive human (face, hair, facial hair, glasses, hat, suit, two-joint arms) and `setLook()` swaps it each match.
+- **Poses** (`revolver.js`): `aimHouse` (first person, scaled, raised on portrait) and `atPlayer` (in their hand, barrel at the camera). `dealer.setAim('temple' | 'you')`. Moods: `'out'` (slumps after their own shot) and `'shot'` (knocked back when you hit them).
+- **HUD**: SHOOT [NAME] (`O`), SHOOT YOURSELF (`Space`, or hold the table), PASS (`P`). Status text swaps HOUSE for the opponent's nickname.
+
 ## Layout
 
 ```
@@ -71,7 +85,8 @@ src/game/feel.js           Shake / hit-stop / punch envelopes
 src/game/gesture.js        Table tap / swipe / hold routing
 src/scene/world.js         Renderer, room, lights (lazy)
 src/scene/revolver.js      Revolver, poses, hammer, cylinder spin
-src/scene/dealer.js        HOUSE (suit + fedora), aim, slump, eye-glint tell
+src/scene/dealer.js        Opponent person (cast looks), aim, slump / knock-back, eye-glint tell
+src/game/characters.js     The six opponents (nicknames only)
 src/scene/kits.js          3D chip tokens
 src/scene/geometries.js    Shared buffers
 src/scene/quality.js       Mobile / adaptive DPR / reduced motion
@@ -94,7 +109,7 @@ public/_headers            Pages cache (not a deploy)
 - Fair always 1/6 and re-spins after a safe pull.
 - Classic / VS HOUSE share one load; chamber advances; odds = 1/(6 − pulls).
 - VS HOUSE is best of 3; first hit loses the round; `survived` counts **player** pulls only.
-- The duel deals one RE-SPIN per side per round. SCOPE / RACK / STUN remain in logic (RACK of the live chamber still empties the drum) but are not dealt.
+- Duel: `pull(..., 'self')` blank keeps the turn, `'other'` blank passes it, `pass()` once per side per round. RE-SPIN / SCOPE / RACK / STUN remain in logic (RACK of the live chamber still empties the drum) but are not dealt.
 - Solo pot pays fair odds (One Spin: 6/(6 − n) × $100). Cash out needs ≥ 1 safe pull. A hit zeroes the pot.
 - `pull(state, 'player')` is a no-op on the house turn. Space must never resolve as `'pull'` while `aiTurn`.
 - `state.tell` is true only after HOUSE scopes a live chamber; spin / pull / rack / nextRound clear it.
@@ -124,7 +139,7 @@ Rules that must not regress:
 - Fair always 1/6 and re-spins after a safe pull.
 - Classic / VS HOUSE share one load; chamber advances; odds = 1/(6-pulls).
 - VS HOUSE is best of 3; first hit loses the round; survived counts player pulls only.
-- The duel deals one RE-SPIN per side per round. SCOPE / RACK / STUN remain in logic (RACK of the live chamber still empties the drum) but are not dealt.
+- Duel: `pull(..., 'self')` blank keeps the turn, `'other'` blank passes it, `pass()` once per side per round. RE-SPIN / SCOPE / RACK / STUN remain in logic (RACK of the live chamber still empties the drum) but are not dealt.
 - Solo pot pays fair odds (One Spin: 6/(6 − n) × $100). Cash out needs ≥ 1 safe pull. A hit zeroes the pot.
 - pull(state, 'player') must fail on the house turn. spaceAction(state) must return 'none' while HOUSE is thinking.
 - state.tell is HOUSE-only (they scoped a live chamber). Player SCOPE must not set it.
