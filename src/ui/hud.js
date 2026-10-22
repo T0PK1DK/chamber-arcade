@@ -437,9 +437,9 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
       }
       const denom = oddsDenom(state);
       const live = state.spun && !state.over;
-      odds.textContent = !state.spun && !state.over
-        ? 'SPIN TO LOAD'
-        : state.over ? '' : denom <= 1 ? 'THE NEXT ONE IS LIVE' : `1 IN ${denom} IS LIVE`;
+      odds.textContent = state.over
+        ? ''
+        : denom <= 1 ? 'THE NEXT ONE IS LIVE' : `1 IN ${denom} IS LIVE`;
       odds.classList.toggle('warn', live && denom <= 3 && denom > 1);
       odds.classList.toggle('danger', live && denom <= 1);
       paintDial(state);

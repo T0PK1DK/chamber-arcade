@@ -137,10 +137,13 @@ body.aim #vignette {
   text-transform: uppercase;
   border-radius: 6px;
   transform: translateY(-180%);
-  transition: transform 0.12s ease-out;
 }
 .skip:focus, .skip:focus-visible {
   transform: none;
+  transition: none;
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--cream);
 }
 
 .sr-only {
