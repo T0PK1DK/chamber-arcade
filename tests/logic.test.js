@@ -68,15 +68,15 @@ test('game over rejects spin and pull (no stuck-button trap)', () => {
   assert.equal(pull(s).ok, false);
 });
 
-test('vs ai: one load, turns alternate, score counts only the player', () => {
+test('vs ai: a missed shot at the other side passes the turn; score counts only the player', () => {
   const s = createMatch('ai', seq([at(0)])); // items
   spin(s, seq([at(5), at(0)]));
-  const p = pull(s);
+  const p = pull(s, 'player', 'other');
   assert.equal(p.hit, false);
   assert.equal(s.survived, 1);
   assert.equal(s.aiTurn, true);
   assert.equal(s.busy, true);
-  const a = pull(s);
+  const a = pull(s, 'ai', 'other');
   assert.equal(a.hit, false);
   assert.equal(a.byAi, true);
   assert.equal(s.survived, 1);
@@ -87,9 +87,9 @@ test('vs ai: one load, turns alternate, score counts only the player', () => {
 test('vs ai: house hit awards the player the round', () => {
   const s = createMatch('ai', () => 0);
   spin(s, seq([at(1), at(0)]));
-  pull(s); // player safe, current -> 1
+  pull(s, 'player', 'other'); // blank at HOUSE, current -> 1
   assert.equal(s.aiTurn, true);
-  const a = pull(s);
+  const a = pull(s, 'ai', 'self');
   assert.equal(a.hit, true);
   assert.equal(s.winner, 'player');
   assert.equal(s.playerRoundWins, 1);
@@ -122,7 +122,7 @@ test('stun skips the house after a safe player pull', () => {
   s.playerItems = [ITEMS.stun];
   spin(s, seq([at(5), at(0)]));
   useItem(s, ITEMS.stun, 'player');
-  pull(s);
+  pull(s, 'player', 'other');
   assert.equal(s.aiTurn, false);
   assert.equal(s.stunOn, null);
 });
@@ -150,7 +150,7 @@ test('resetMatch clears a finished table', () => {
   assert.equal(s.spun, false);
 });
 
-test('HOUSE racks a known live and otherwise pulls', () => {
+test('HOUSE shoots you on a known live instead of racking it', () => {
   const s = createMatch('ai', () => 0);
   s.aiTurn = true;
   s.busy = true;
@@ -159,9 +159,7 @@ test('HOUSE racks a known live and otherwise pulls', () => {
   s.current = 0;
   s.peek = 'live';
   s.aiItems = [ITEMS.rack];
-  assert.deepEqual(decideAi(s), { type: 'item', item: ITEMS.rack });
-  s.aiItems = [];
-  assert.deepEqual(decideAi(s), { type: 'pull' });
+  assert.deepEqual(decideAi(s), { type: 'pull', target: 'other' });
 });
 
 test('unknown mode throws', () => {
@@ -191,7 +189,7 @@ test('cannot pull, item, or peek before spin', () => {
 test('player pull is rejected during HOUSE turn', () => {
   const s = createMatch('ai', () => 0);
   spin(s, seq([at(5), at(0)]));
-  pull(s, 'player');
+  pull(s, 'player', 'other');
   assert.equal(s.aiTurn, true);
   assert.equal(pull(s, 'player').ok, false);
   assert.equal(pull(s, 'player').reason, 'ai-turn');
@@ -251,23 +249,23 @@ test('stun on the player lets HOUSE pull again', () => {
   s.bullet = 5;
   s.current = 0;
   useItem(s, ITEMS.stun, 'ai');
-  const r = pull(s, 'ai');
+  const r = pull(s, 'ai', 'other');
   assert.equal(r.hit, false);
   assert.equal(s.aiTurn, true);
   assert.equal(s.busy, true);
   assert.equal(s.stunOn, null);
 });
 
-test('every duel round deals exactly one re-spin to each side', () => {
+test('every duel round deals one PASS to each side and no chips', () => {
   const s = createMatch('ai', () => 0);
-  assert.deepEqual(s.playerItems, [ITEMS.respin]);
-  assert.deepEqual(s.aiItems, [ITEMS.respin]);
+  assert.deepEqual(s.playerItems, []);
+  assert.deepEqual(s.passes, { player: 1, ai: 1 });
   spin(s, seq([at(0), at(0)]));
   pull(s);
   assert.equal(nextRound(s, () => 0).ok, true);
   assert.equal(s.round, 2);
-  assert.deepEqual(s.playerItems, [ITEMS.respin]);
-  assert.deepEqual(s.aiItems, [ITEMS.respin]);
+  assert.deepEqual(s.aiItems, []);
+  assert.deepEqual(s.passes, { player: 1, ai: 1 });
   assert.equal(s.tell, false);
   assert.equal(s.spun, false);
 });
@@ -275,13 +273,13 @@ test('every duel round deals exactly one re-spin to each side', () => {
 test('player wins the match after two HOUSE hits', () => {
   const s = createMatch('ai', () => 0);
   spin(s, seq([at(1), at(0)]));
-  pull(s, 'player');
-  pull(s, 'ai');
+  pull(s, 'player', 'other');
+  pull(s, 'ai', 'self');
   assert.equal(s.playerRoundWins, 1);
   nextRound(s, () => 0);
   spin(s, seq([at(1), at(0)]));
-  pull(s, 'player');
-  pull(s, 'ai');
+  pull(s, 'player', 'other');
+  pull(s, 'ai', 'self');
   assert.equal(s.playerRoundWins, 2);
   assert.equal(s.matchOver, true);
   assert.match(s.status, /YOU WIN/);

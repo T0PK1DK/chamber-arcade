@@ -54,7 +54,7 @@ test('hold cannot pull before a spin, after a hit, or with no state', () => {
 test('no table gesture acts for the player on the HOUSE turn', () => {
   const s = createMatch('ai', seq([0]));
   spin(s, seq([at(5), at(0)]));
-  pull(s, 'player');
+  pull(s, 'player', 'other');
   assert.equal(s.aiTurn, true);
   for (const g of ['tap', 'swipe', 'hold', 'none']) {
     assert.equal(tableAction(s, g), 'none', g);

@@ -322,9 +322,9 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
 @media (pointer: fine) { .hint { visibility: hidden; } }
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
-.actions .side { flex: 0 0 auto; min-width: 72px; }
+.actions .side { flex: 0 0 auto; min-width: 64px; }
 .actions .primary {
-  flex: 1 1 10rem;
+  flex: 1 1 7rem;
   min-height: 64px;
   font-size: 1.1rem;
   font-weight: 700;
@@ -345,6 +345,18 @@ kbd { font-family: var(--sans); border: 1px solid var(--dim); border-radius: 4px
   background: var(--win);
 }
 @media (hover: hover) { .actions .cash:hover:not(:disabled) { background: #f5df98; } }
+.actions .shoot {
+  flex: 1 1 100%;
+  order: -1;
+  min-height: 60px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border-color: var(--bang);
+  color: #fff4ee;
+  background: rgba(200, 40, 30, 0.55);
+}
+@media (hover: hover) { .actions .shoot:hover:not(:disabled) { background: var(--bang); color: #1a0500; } }
 .actions button:active:not(:disabled) { transform: scale(0.97); }
 .gate .primary { min-height: 64px; background: var(--brass); color: #1a1208; }
 

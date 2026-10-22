@@ -4,9 +4,11 @@
  * fair    — re-spin before every pull. Always 1/6. Score = your safe pulls.
  * classic — one spin, chamber advances, odds rise 1/6 → 1/1.
  * ai      — one spin, shared revolver, you and the HOUSE take turns.
- *           Chamber advances each pull. First hit loses the round.
- *           Best of 3. Each side gets one RE-SPIN per round (a real
- *           house rule: spin the cylinder again before your pull).
+ *           Chamber advances each pull. Best of 3. On your turn you aim:
+ *             self  — live: you lose the round. Blank: you KEEP the turn
+ *                     (and the odds on the next chamber just got worse).
+ *             other — live: they lose the round. Blank: turn passes.
+ *           Or PASS once per round: hand the revolver over unfired.
  *
  * Solo modes keep a pot: start at a $100 stake, every safe pull pays
  * fair odds, and you may CASH OUT any time after your first safe pull.
@@ -45,9 +47,12 @@ export function pickItems(count, rng) {
   return out;
 }
 
+// The duel deals no chips now: the decisions are aim and PASS.
+// RE-SPIN / SCOPE / RACK / STUN still work if a variant deals them.
 function dealItems(state) {
-  state.playerItems = [ITEMS.respin];
-  state.aiItems = [ITEMS.respin];
+  state.playerItems = [];
+  state.aiItems = [];
+  state.passes = { player: 1, ai: 1 };
 }
 
 export function createMatch(mode, rng = defaultRng) {
@@ -75,6 +80,7 @@ export function createMatch(mode, rng = defaultRng) {
     stunOn: null,
     pot: 0,
     cashed: 0,
+    passes: { player: 0, ai: 0 },
     status: mode === 'ai' ? 'SPIN TO LOAD — YOU PULL FIRST' : 'SPIN THE CYLINDER',
     last: null,
   };
@@ -138,26 +144,26 @@ export function spin(state, rng = defaultRng) {
   state.pulls = 0;
   state.peek = null;
   state.tell = false;
-  state.status = 'READY — PULL';
+  state.status = state.mode === 'ai' ? 'LOADED — YOUR MOVE' : 'READY — PULL';
   state.last = { type: 'spin', current: state.current, bullet: state.bullet };
   return { ok: true };
 }
 
-function finishHit(state, byAi) {
+function finishHit(state, byAi, victim = byAi ? 'ai' : 'player') {
   state.over = true;
   state.busy = false;
   state.peek = null;
   state.tell = false;
-  state.last = { type: 'hit', byAi };
+  state.last = { type: 'hit', byAi, victim };
   if (state.mode === 'ai') {
-    if (byAi) {
+    if (victim === 'ai') {
       state.winner = 'player';
       state.playerRoundWins += 1;
-      state.status = 'HOUSE OUT — YOU TAKE THE ROUND';
+      state.status = byAi ? 'HOUSE OUT — YOU TAKE THE ROUND' : 'YOU SHOT HOUSE — YOUR ROUND';
     } else {
       state.winner = 'ai';
       state.aiRoundWins += 1;
-      state.status = 'OUT — HOUSE TAKES THE ROUND';
+      state.status = byAi ? 'HOUSE SHOT YOU — HOUSE ROUND' : 'OUT — HOUSE TAKES THE ROUND';
     }
     const need = 2;
     if (state.playerRoundWins >= need || state.aiRoundWins >= need || state.round >= state.maxRounds) {
@@ -200,12 +206,19 @@ function passTurn(state, fromAi) {
   }
 }
 
-export function pull(state, who = 'auto') {
+/**
+ * Fire the current chamber. `target` is 'self' (default; the only choice
+ * in solo modes) or 'other' (duel only: aim at the opponent).
+ */
+export function pull(state, who = 'auto', target = 'self') {
   const byAi = state.mode === 'ai' && state.aiTurn;
   if (who === 'player' && byAi) return { ok: false, reason: 'ai-turn' };
   if (who === 'ai' && !byAi) return { ok: false, reason: 'player-turn' };
   if (state.over || state.matchOver || !state.spun) return { ok: false, reason: 'locked' };
   if (!byAi && state.busy) return { ok: false, reason: 'busy' };
+  const aim = state.mode === 'ai' && target === 'other' ? 'other' : 'self';
+  const shooter = byAi ? 'ai' : 'player';
+  const victim = aim === 'self' ? shooter : (byAi ? 'player' : 'ai');
 
   const hit = state.current === state.bullet;
   state.pulls += 1;
@@ -213,14 +226,14 @@ export function pull(state, who = 'auto') {
   state.tell = false;
 
   if (hit) {
-    finishHit(state, byAi);
-    return { ok: true, hit: true, byAi };
+    finishHit(state, byAi, victim);
+    return { ok: true, hit: true, byAi, target: aim, victim };
   }
 
   if (!byAi) state.survived += 1;
   if (state.mode !== 'ai') state.pot = potAfter(state.mode, state.survived);
   state.current = (state.current + 1) % CHAMBERS;
-  state.last = { type: 'click', byAi, current: state.current };
+  state.last = { type: 'click', byAi, target: aim, current: state.current };
 
   if (state.mode === 'fair') {
     state.spun = false;
@@ -229,10 +242,34 @@ export function pull(state, who = 'auto') {
     state.status = state.survived >= CHAMBERS - 1
       ? `SAFE — POT $${state.pot}. THE LAST ONE IS LIVE`
       : `SAFE — POT $${state.pot}`;
+  } else if (aim === 'self') {
+    // Blank on yourself: nerve pays, you keep the revolver.
+    state.status = byAi ? 'HOUSE SURVIVES — KEEPS THE TURN' : 'CLICK. YOU KEEP THE TURN';
   } else {
     passTurn(state, byAi);
+    if (!byAi && state.aiTurn) state.status = 'CLICK. MISSED — HOUSE TURN';
+    if (byAi && !state.aiTurn) state.status = 'CLICK. HOUSE MISSED — YOUR TURN';
   }
-  return { ok: true, hit: false, byAi };
+  return { ok: true, hit: false, byAi, target: aim };
+}
+
+export function canPass(state, who = 'player') {
+  if (state.mode !== 'ai' || state.over || state.matchOver || !state.spun) return false;
+  if ((state.passes?.[who] || 0) < 1) return false;
+  return who === 'ai' ? state.aiTurn : isPlayerTurn(state);
+}
+
+/** Hand the revolver over without firing. Once per side per round. */
+export function pass(state, who = 'player') {
+  if (!canPass(state, who)) return { ok: false, reason: 'locked' };
+  state.passes[who] -= 1;
+  state.peek = null;
+  state.tell = false;
+  passTurn(state, who === 'ai');
+  if (who === 'player') state.status = state.aiTurn ? 'YOU PASS — HOUSE HOLDS THE REVOLVER' : 'YOU PASS — HOUSE STUNNED, YOUR TURN';
+  else state.status = state.aiTurn ? 'HOUSE PASSES — STILL HOUSE' : 'HOUSE PASSES IT BACK — YOUR TURN';
+  state.last = { type: 'pass', who };
+  return { ok: true };
 }
 
 export function useItem(state, item, who = 'player', rng = defaultRng) {

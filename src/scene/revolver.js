@@ -97,7 +97,16 @@ export function createRevolver(mats, geo) {
       quat: new Quaternion().setFromEuler(new Euler(0, 0.1, 0.6, 'YXZ')),
     },
     player: { pos: new Vector3(), quat: new Quaternion() },
+    // You aim across the table: first person, bottom right, barrel down-range.
+    aimHouse: { pos: new Vector3(), quat: new Quaternion() },
+    // They aim at you: in their extended hand, barrel turned toward the camera.
+    atPlayer: { pos: new Vector3(-0.2, 1.44, -0.32), quat: new Quaternion() },
   };
+  const aimOffset = new Vector3(0, 0, -0.75);
+  // Turned in enough to show the frame and cylinder side, not just the hammer.
+  const aimRot = new Quaternion().setFromEuler(new Euler(0.05, Math.PI / 2 + 0.42, -0.08, 'YXZ'));
+  const toCam = new Vector3();
+  const xAxis = new Vector3(1, 0, 0);
   // Your pull: the revolver lifts off the table and out of frame toward you
   // (bottom right). The shot holds on HOUSE watching you, like a film would;
   // a first-person gun this close to the lens only reads as a black slab.
@@ -164,6 +173,19 @@ export function createRevolver(mats, geo) {
     // Chamber state lives on the HUD dial; the 3D gun just looks the part.
     paint() {},
     update(dt, reducedMotion = false, punch = 0, camera = null) {
+      if (camera && pose === 'aimHouse') {
+        // Keep it inside a narrow portrait frustum as well as a wide one.
+        const halfH = Math.tan((camera.fov * Math.PI) / 360) * -aimOffset.z;
+        aimOffset.x = Math.min(0.24, halfH * camera.aspect * 0.5);
+        // Portrait phones put the HUD over the lower half; keep the gun above it.
+        aimOffset.y = -halfH * (camera.aspect < 0.8 ? 0.02 : 0.42);
+        poses.aimHouse.pos.copy(aimOffset).applyMatrix4(camera.matrixWorld);
+        poses.aimHouse.quat.copy(camera.quaternion).multiply(aimRot);
+      }
+      if (camera && pose === 'atPlayer') {
+        toCam.copy(camera.position).sub(poses.atPlayer.pos).normalize();
+        poses.atPlayer.quat.setFromUnitVectors(xAxis, toCam);
+      }
       if (camera && pose === 'player') {
         poses.player.pos.copy(camOffset).applyMatrix4(camera.matrixWorld);
         poses.player.quat.copy(camera.quaternion).multiply(camRot);
@@ -172,6 +194,9 @@ export function createRevolver(mats, geo) {
       const k = reducedMotion ? 1 : Math.min(1, dt * (pose === 'table' ? 5 : 3.2));
       root.position.lerp(p.pos, k);
       root.quaternion.slerp(p.quat, k);
+      // First person sits close to the lens, so draw it smaller to keep its shape readable.
+      const want = pose === 'aimHouse' ? 0.55 : 1;
+      root.scale.setScalar(root.scale.x + (want - root.scale.x) * k);
 
 
       cock += (cockWanted - cock) * Math.min(1, dt * (cockWanted ? 7 : 30));

@@ -19,28 +19,37 @@ function house(extra = {}) {
   });
   return s;
 }
+const fixed = (v) => () => v;
 
 test('HOUSE waits when it is not their turn', () => {
   const s = house({ aiTurn: false, busy: false });
   assert.deepEqual(decideAi(s), { type: 'wait' });
 });
 
-test('HOUSE scopes when the drum is short and unread', () => {
-  const s = house({ pulls: 3, aiItems: [ITEMS.scope] });
-  assert.deepEqual(decideAi(s), { type: 'item', item: ITEMS.scope });
+test('HOUSE turns the gun on you once the odds are 1 in 3 or worse', () => {
+  for (const pulls of [3, 4, 5]) {
+    assert.deepEqual(decideAi(house({ pulls }), fixed(0.99)), { type: 'pull', target: 'other' });
+  }
 });
 
-test('HOUSE does not scope when odds are still 1/6', () => {
-  const s = house({ pulls: 0, aiItems: [ITEMS.scope] });
-  assert.deepEqual(decideAi(s), { type: 'pull' });
+test('HOUSE mostly tests its own nerve on long odds', () => {
+  assert.deepEqual(decideAi(house({ pulls: 0 }), fixed(0.9)), { type: 'pull', target: 'self' });
+  assert.deepEqual(decideAi(house({ pulls: 1 }), fixed(0.2)), { type: 'pull', target: 'other' });
 });
 
-test('HOUSE pulls a known blank instead of spending stun', () => {
-  const s = house({ peek: 'blank', pulls: 4, aiItems: [ITEMS.stun] });
-  assert.deepEqual(decideAi(s), { type: 'pull' });
+test('HOUSE sometimes passes on long odds, only while it still has a pass', () => {
+  const s = house({ pulls: 0 });
+  assert.deepEqual(decideAi(s, fixed(0.05)), { type: 'pass' });
+  s.passes.ai = 0;
+  assert.deepEqual(decideAi(s, fixed(0.05)), { type: 'pull', target: 'other' });
 });
 
-test('HOUSE stuns when odds are ugly and the chamber is unread', () => {
-  const s = house({ pulls: 4, aiItems: [ITEMS.stun] });
-  assert.deepEqual(decideAi(s), { type: 'item', item: ITEMS.stun });
+test('a known chamber decides the aim', () => {
+  assert.deepEqual(decideAi(house({ peek: 'live', pulls: 0 })), { type: 'pull', target: 'other' });
+  assert.deepEqual(decideAi(house({ peek: 'blank', pulls: 4 })), { type: 'pull', target: 'self' });
+});
+
+test('variant chips still run: scope when short and unread, stun when ugly', () => {
+  assert.deepEqual(decideAi(house({ pulls: 3, aiItems: [ITEMS.scope] })), { type: 'item', item: ITEMS.scope });
+  assert.deepEqual(decideAi(house({ pulls: 4, aiItems: [ITEMS.stun] })), { type: 'item', item: ITEMS.stun });
 });

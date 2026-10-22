@@ -190,7 +190,7 @@ export function createWorld(canvas) {
     setTurn(who) {
       wantColor.setHex(who === 'house' ? EMBER : BRASS);
     },
-    /** opts: { byAi, gore } for a live round. */
+    /** opts: { byAi, victim, gore } for a live round. */
     kick(kind, opts = {}) {
       feel.kick(kind === 'cash' ? 'win' : kind);
       if (kind === 'bang') {
@@ -202,8 +202,9 @@ export function createWorld(canvas) {
         if (gun.pose !== 'player') {
           fx.shot(muzzle, barrel, { calm: feel.calm });
           if (!feel.calm) sparks.burst(muzzle, 0xfff0b0, 10, 1.0);
-          if (opts.gore && opts.byAi) {
-            dealer.headPos(exitWound).addScaledVector(barrel, 0.17);
+          const houseHit = (opts.victim || (opts.byAi ? 'ai' : 'player')) === 'ai';
+          if (opts.gore && houseHit) {
+            dealer.headPos(exitWound).addScaledVector(barrel, 0.14);
             fx.blood(exitWound, barrel);
           }
         }
@@ -222,10 +223,14 @@ export function createWorld(canvas) {
       if (mats.steel.specular) mats.steel.specular.setHex(f[1]);
       mats.steelDark.color.setHex(f[2]);
     },
-    /** 'table' | 'player' | 'house' */
+    /** 'table' | 'player' | 'house' | 'aimHouse' | 'atPlayer' */
     setGunPose(pose) {
       gun.setPose(pose);
-      dealer.setAim(pose === 'house');
+      dealer.setAim(pose === 'house' ? 'temple' : pose === 'atPlayer' ? 'you' : false);
+    },
+    setOpponent(character) {
+      dealer.setLook(character);
+      if (quality.shadows) dealer.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     },
     update(dt, now) {
       const calm = quality.reducedMotion;

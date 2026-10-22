@@ -47,3 +47,12 @@ export function isCashKey(code) {
 export function isRespinKey(code) {
   return code === 'KeyR';
 }
+
+/** O aims at the opponent in the duel; P passes the revolver. */
+export function isShootKey(code) {
+  return code === 'KeyO';
+}
+
+export function isPassKey(code) {
+  return code === 'KeyP';
+}

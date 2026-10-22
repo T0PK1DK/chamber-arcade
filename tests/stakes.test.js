@@ -89,8 +89,9 @@ test('the duel has no pot and no cash out', () => {
   assert.equal(canCashOut(s), false);
 });
 
-test('re-spin resets the odds to 1 in 6, keeps the turn, and is single use', () => {
+test('re-spin (variant chip) resets the odds to 1 in 6, keeps the turn, and is single use', () => {
   const s = createMatch('ai');
+  s.playerItems = [ITEMS.respin];
   spin(s, seq([at(5), at(0)]));
   s.pulls = 3;
   assert.equal(oddsDenom(s), 3);
@@ -104,12 +105,66 @@ test('re-spin resets the odds to 1 in 6, keeps the turn, and is single use', () 
   assert.equal(useItem(s, ITEMS.respin, 'player').ok, false);
 });
 
-test('HOUSE re-spins when odds hit 1 in 3, not before', () => {
+test('HOUSE with a re-spin chip still shoots you at 1 in 3 rather than reset the odds', () => {
   const s = createMatch('ai');
-  Object.assign(s, { aiTurn: true, busy: true, spun: true, bullet: 0, current: 2, pulls: 2 });
-  assert.deepEqual(decideAi(s), { type: 'pull' });
-  s.pulls = 3;
-  assert.deepEqual(decideAi(s), { type: 'item', item: ITEMS.respin });
-  s.aiItems = [];
-  assert.deepEqual(decideAi(s), { type: 'pull' });
+  Object.assign(s, { aiTurn: true, busy: true, spun: true, bullet: 0, current: 2, pulls: 3, aiItems: [ITEMS.respin] });
+  assert.deepEqual(decideAi(s, () => 0.5), { type: 'pull', target: 'other' });
+});
+
+test('duel aim: blank on yourself keeps the turn, blank at HOUSE passes it', () => {
+  const s = createMatch('ai');
+  spin(s, seq([at(3), at(0)]));
+  let r = pull(s, 'player', 'self');
+  assert.deepEqual([r.hit, r.target, s.aiTurn, s.survived], [false, 'self', false, 1]);
+  assert.match(s.status, /KEEP THE TURN/);
+  r = pull(s, 'player', 'other');
+  assert.deepEqual([r.hit, r.target, s.aiTurn, s.survived], [false, 'other', true, 2]);
+  r = pull(s, 'ai', 'self');
+  assert.equal(s.aiTurn, true);
+  assert.match(s.status, /HOUSE SURVIVES/);
+});
+
+test('duel aim: the round goes to whoever was not hit', () => {
+  const youShootHouse = createMatch('ai');
+  spin(youShootHouse, seq([at(0), at(0)]));
+  let r = pull(youShootHouse, 'player', 'other');
+  assert.deepEqual([r.hit, r.victim, youShootHouse.winner], [true, 'ai', 'player']);
+  assert.match(youShootHouse.status, /YOU SHOT HOUSE/);
+
+  const houseShootsYou = createMatch('ai');
+  spin(houseShootsYou, seq([at(1), at(0)]));
+  pull(houseShootsYou, 'player', 'other');
+  r = pull(houseShootsYou, 'ai', 'other');
+  assert.deepEqual([r.hit, r.victim, houseShootsYou.winner], [true, 'player', 'ai']);
+  assert.match(houseShootsYou.status, /HOUSE SHOT YOU/);
+});
+
+test('solo modes ignore the aim: you can only shoot yourself', () => {
+  const s = createMatch('classic');
+  spin(s, seq([at(0), at(0)]));
+  const r = pull(s, 'player', 'other');
+  assert.deepEqual([r.target, r.victim], ['self', 'player']);
+});
+
+test('PASS hands over unfired, once per side per round, duel only', async () => {
+  const { pass, canPass, nextRound } = await import('../src/game/logic.js');
+  const s = createMatch('ai');
+  assert.equal(canPass(s), false); // not loaded yet
+  spin(s, seq([at(4), at(0)]));
+  assert.equal(pass(s, 'player').ok, true);
+  assert.equal(s.aiTurn, true);
+  assert.equal(s.pulls, 0);
+  assert.equal(s.current, 0);
+  assert.equal(pass(s, 'player').ok, false); // not your turn
+  assert.equal(pass(s, 'ai').ok, true);
+  assert.equal(s.aiTurn, false);
+  assert.equal(canPass(s, 'player'), false); // spent
+  pull(s, 'player', 'other');
+  pull(s, 'ai', 'other');
+  pull(s, 'player', 'other');
+  pull(s, 'ai', 'other');
+  assert.equal(pull(s, 'player', 'other').hit, true);
+  nextRound(s);
+  assert.deepEqual(s.passes, { player: 1, ai: 1 });
+  assert.equal(canPass(createMatch('classic')), false);
 });

@@ -33,7 +33,7 @@ test('Space never pulls for HOUSE', () => {
   assert.equal(spaceAction(s), 'spin');
   spin(s, seq([at(5), at(0)]));
   assert.equal(spaceAction(s), 'pull');
-  pull(s, 'player');
+  pull(s, 'player', 'other');
   assert.equal(s.aiTurn, true);
   assert.equal(spaceAction(s), 'none');
 });
@@ -77,4 +77,12 @@ test('C cashes out and R re-spins; nothing else maps to them', async () => {
   assert.equal(isCashKey('Space'), false);
   assert.equal(isRespinKey('KeyR'), true);
   assert.equal(isRespinKey('KeyC'), false);
+});
+
+test('O shoots the opponent and P passes; Space stays self-only', async () => {
+  const { isShootKey, isPassKey } = await import('../src/game/input.js');
+  assert.equal(isShootKey('KeyO'), true);
+  assert.equal(isShootKey('Space'), false);
+  assert.equal(isPassKey('KeyP'), true);
+  assert.equal(isPassKey('KeyO'), false);
 });

@@ -10,7 +10,7 @@ Live (previous 2D build): [chamber-arcade.pages.dev](https://chamber-arcade.page
 
 - **ONE SPIN** (`classic`): spin once, keep pulling. Odds go 1/6 → 1/5 → … → 1/1. The $100 stake grows at fair odds ($120, $150, $200, $300, $600). **Cash out** any time after your first click.
 - **SPIN EVERY PULL** (`fair`): the cylinder is re-spun every pull, so it's always 1 in 6. The pot grows ×1.2 per click.
-- **DUEL THE HOUSE** (`ai`): pass the revolver, first hit loses the round, best of 3. Each side gets one **RE-SPIN** per round, which resets the odds to 1 in 6 before your pull.
+- **DUEL A STRANGER** (`ai`): a new opponent sits down each match (six distinct people). On your turn, **shoot yourself** (an empty chamber means you keep the revolver), **shoot them** (an empty chamber passes it), or **pass** once per round. Whoever takes the round loses it. Best of 3.
 
 ## Features
 

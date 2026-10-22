@@ -1,4 +1,4 @@
-import { CHAMBERS, ITEMS, STAKE, canCashOut, oddsDenom } from '../game/logic.js';
+import { CHAMBERS, ITEMS, STAKE, canCashOut, canPass, oddsDenom } from '../game/logic.js';
 import {
   loadScores,
   loadAdultOk,
@@ -28,7 +28,7 @@ const ITEM_HINT = {
 
 const money = (n) => `$${n.toLocaleString('en-US')}`;
 
-export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, onNext, onMenu, onMute, onFinish }) {
+export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, onCash, onAgain, onNext, onMenu, onMute, onFinish }) {
   const app = document.getElementById('app');
   app.innerHTML = `
     <header class="top">
@@ -62,7 +62,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       <div class="modes">
         <button type="button" data-mode="classic" aria-keyshortcuts="2">ONE SPIN<span>Spin once, then keep pulling. Each empty chamber raises the odds and grows the pot faster. Walk away any time.</span></button>
         <button type="button" data-mode="fair" aria-keyshortcuts="1">SPIN EVERY PULL<span>The cylinder is spun before every pull. Always 1 in 6. Steady money.</span></button>
-        <button type="button" data-mode="ai" aria-keyshortcuts="3">DUEL THE HOUSE<span>Pass the revolver back and forth. Best of three. One re-spin each per round.</span></button>
+        <button type="button" data-mode="ai" aria-keyshortcuts="3">DUEL A STRANGER<span>Aim at yourself or at them. Survive your own shot and you keep the revolver. Best of three.</span></button>
       </div>
       <div class="finish" role="radiogroup" aria-label="Revolver finish">
         <small>YOUR REVOLVER</small>
@@ -81,8 +81,8 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
           <li><strong>Spin</strong> the cylinder, then <strong>pull</strong> the trigger. An empty chamber clicks, and you're still in.</li>
           <li>Solo games start with a ${money(STAKE)} stake. Every safe pull raises the pot at fair odds. <strong>Cash out</strong> whenever you like. If you hit the round, the pot is gone.</li>
           <li>In <strong>One Spin</strong>, the odds go 1 in 6, then 1 in 5, and so on. After five clicks the last chamber is the live one.</li>
-          <li>In a <strong>Duel</strong>, you and HOUSE take turns. Whoever hits the round loses the round. Once per round you may <strong>re-spin</strong> before your pull.</li>
-          <li>Keys: <kbd>Space</kbd> spin / pull · <kbd>C</kbd> cash out · <kbd>R</kbd> re-spin · <kbd>Esc</kbd> menu · <kbd>M</kbd> sound.</li>
+          <li>In a <strong>Duel</strong> you choose where to aim. <strong>Shoot yourself</strong>: an empty chamber lets you keep the revolver, and the odds on the next one get worse for whoever faces it. <strong>Shoot them</strong>: an empty chamber hands them the revolver. Whoever takes the round loses it. Once per round you may <strong>pass</strong> it over without firing.</li>
+          <li>Keys: <kbd>Space</kbd> spin / shoot yourself · <kbd>O</kbd> shoot opponent · <kbd>P</kbd> pass · <kbd>C</kbd> cash out · <kbd>Esc</kbd> menu · <kbd>M</kbd> sound.</li>
           <li>On a phone: swipe the table to spin, and press and hold it to pull.</li>
         </ul>
       </details>
@@ -110,6 +110,8 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       <div class="actions">
         <button type="button" id="menuBtn" class="ghost side" aria-label="Menu">MENU</button>
         <button type="button" id="cashBtn" class="cash hidden">CASH OUT</button>
+        <button type="button" id="shootBtn" class="shoot hidden" aria-keyshortcuts="O">SHOOT HOUSE</button>
+        <button type="button" id="passBtn" class="ghost side hidden" aria-keyshortcuts="P">PASS</button>
         <button type="button" id="spinBtn" class="primary">SPIN</button>
         <button type="button" id="fireBtn" class="primary pull hidden" disabled>PULL THE TRIGGER</button>
         <button type="button" id="nextBtn" class="primary hidden">NEXT ROUND</button>
@@ -142,6 +144,9 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
   const spinBtn = $('spinBtn');
   const fireBtn = $('fireBtn');
   const cashBtn = $('cashBtn');
+  const shootBtn = $('shootBtn');
+  const passBtn = $('passBtn');
+  let opponent = 'HOUSE';
   const nextBtn = $('nextBtn');
   const againBtn = $('againBtn');
   const muteBtn = $('muteBtn');
@@ -223,6 +228,8 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
   spinBtn.addEventListener('click', onSpin);
   fireBtn.addEventListener('click', onPull);
   cashBtn.addEventListener('click', onCash);
+  shootBtn.addEventListener('click', onShoot);
+  passBtn.addEventListener('click', onPass);
   nextBtn.addEventListener('click', onNext);
   againBtn.addEventListener('click', onAgain);
   $('menuBtn').addEventListener('click', onMenu);
@@ -323,6 +330,9 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       void splatEl.offsetWidth;
       splatEl.className = 'on';
     },
+    setOpponent(title) {
+      opponent = title || 'HOUSE';
+    },
     clearSplat() {
       if (splatEl) splatEl.className = '';
     },
@@ -391,8 +401,10 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       if (blackEl) blackEl.className = '';
     },
     render(state) {
-      if (status.textContent !== state.status) {
-        status.textContent = state.status;
+      // Rules text says HOUSE; the table shows who is actually sitting there.
+      const said = state.mode === 'ai' ? state.status.replace(/\bHOUSE\b/g, opponent) : state.status;
+      if (status.textContent !== said) {
+        status.textContent = said;
         replay(status, 'pop');
       }
       const hit = state.last?.type === 'hit' && state.over;
@@ -423,11 +435,11 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
         ? `${state.playerRoundWins}–${state.aiRoundWins}`
         : money(shownPot || (state.over ? 0 : STAKE));
 
-      kits.classList.toggle('hidden', !ai);
+      kits.classList.toggle('hidden', !ai || !(state.playerItems.length || state.aiItems.length));
       match.classList.toggle('hidden', !ai);
       round.textContent = ai ? ` · Round ${state.round} of 3` : '';
       if (ai) {
-        match.textContent = `YOU ${state.playerRoundWins} — ${state.aiRoundWins} HOUSE`;
+        match.textContent = `YOU ${state.playerRoundWins} — ${state.aiRoundWins} ${opponent}`;
         const usable = !state.over && !state.matchOver && !state.busy && !state.aiTurn && state.spun;
         chips(youKit, state.playerItems, usable);
         chips(houseKit, state.aiItems, false);
@@ -435,7 +447,7 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
           turn.textContent = state.spun ? 'YOUR TURN' : 'LOAD THE REVOLVER';
           turn.classList.remove('ai');
         } else if (!state.over) {
-          turn.textContent = "HOUSE'S TURN";
+          turn.textContent = `${opponent} HAS THE REVOLVER`;
           turn.classList.add('ai');
         } else {
           turn.textContent = state.matchOver ? 'MATCH OVER' : 'ROUND OVER';
@@ -455,12 +467,19 @@ export function createHud({ onStart, onSpin, onPull, onItem, onCash, onAgain, on
       const cash = canCashOut(state) && playable;
       cashBtn.classList.toggle('hidden', !cash);
       cashBtn.textContent = `CASH OUT ${money(state.pot)}`;
+      fireBtn.textContent = ai ? 'SHOOT YOURSELF' : 'PULL THE TRIGGER';
+      shootBtn.classList.toggle('hidden', !(ai && playable && state.spun));
+      shootBtn.textContent = `SHOOT ${opponent.replace(/^THE /, '')}`;
+      const passable = ai && playable && canPass(state, 'player');
+      passBtn.classList.toggle('hidden', !passable);
       nextBtn.classList.toggle('hidden', !(state.over && ai && !state.matchOver));
       againBtn.classList.toggle('hidden', !(state.over && (!ai || state.matchOver)));
 
       hint.textContent = !playable
         ? ''
-        : state.spun ? 'or press and hold the table to pull' : 'or swipe the table to spin';
+        : !state.spun ? 'or swipe the table to spin'
+          : ai ? 'survive your own shot and you keep the revolver'
+            : 'or press and hold the table to pull';
     },
   };
 }

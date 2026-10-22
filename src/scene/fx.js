@@ -176,6 +176,18 @@ export function createFx({ quality }) {
       }
       drops.visible = true;
       dropsLive = true;
+      // Land the wall spatter where the line of fire meets the back wall;
+      // a sideways temple shot falls back to the right-hand patch.
+      if (dir.z < -0.25) {
+        const t = (-3.97 - exit.z) / dir.z;
+        wall.mesh.position.set(
+          Math.max(-3, Math.min(3, exit.x + dir.x * t)),
+          Math.max(1.2, Math.min(3.2, exit.y + dir.y * t + 0.3)),
+          -3.97,
+        );
+      } else {
+        wall.mesh.position.set(1.05, 2.0, -3.97);
+      }
       paint(wall, { cx: 0.3, cy: 0.45, angle: 0, spread: 1.6, reach: 0.55, drops: 70, blobs: 6, drips: 5 });
       paint(felt, { cx: 0.35, cy: 0.5, angle: 0.2, spread: 2.2, reach: 0.45, drops: 40, blobs: 4, drips: 0 });
       pool.visible = true;

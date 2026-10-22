@@ -9,7 +9,9 @@ import {
   canSpin,
   canPull,
   cashOut,
+  pass,
 } from './game/logic.js';
+import { pickCharacter } from './game/characters.js';
 import { decideAi } from './game/ai.js';
 import { createAudio } from './game/audio.js';
 import { saveBestCash, recordAiMatch } from './game/storage.js';
@@ -18,6 +20,8 @@ import {
   isCashKey,
   isMenuKey,
   isRespinKey,
+  isShootKey,
+  isPassKey,
   isMuteKey,
   isPrimaryKey,
   modeFromMenuKey,
@@ -35,6 +39,7 @@ let recordedMatch = false;
 let acting = false;
 let hidden = false;
 let pendingMode = null;
+let opponentId = null;
 const timers = [];
 
 function later(ms, fn) {
@@ -83,10 +88,12 @@ function unlockButtons() {
 }
 
 function afterHit(result) {
-  world.kick('bang', { byAi: result.byAi, gore: hud.gore });
+  const victim = result.victim || (result.byAi ? 'ai' : 'player');
+  world.kick('bang', { byAi: result.byAi, victim, gore: hud.gore });
   buzz([60, 30, 120]);
-  if (!result.byAi) {
-    // You took the round: blood hits the lens (if on), then black and a ringing ear.
+  if (victim === 'player') {
+    // You took the round (your own pull or theirs across the table):
+    // blood hits the lens (if on), then black and a ringing ear.
     audio.bang(true);
     if (hud.gore) {
       hud.flash('bang');
@@ -101,11 +108,15 @@ function afterHit(result) {
       world.setPullCam(false);
     });
   } else {
-    // HOUSE took the round: muzzle flash, it slumps, the revolver drops.
+    // They took the round. Their own pull: they slump onto the table.
+    // Your shot: they're thrown back in the chair.
     audio.bang(false);
     hud.flash('bang');
-    world.dealer.setMood('out');
-    later(450, () => world.setGunPose('table'));
+    world.dealer.setMood(result.byAi ? 'out' : 'shot');
+    later(result.byAi ? 450 : 900, () => {
+      world.setGunPose('table');
+      world.setPullCam(false);
+    });
     later(900, () => {
       world.kick('win');
       audio.win();
@@ -134,12 +145,12 @@ function afterClick(result) {
   if (state.mode === 'ai' && state.aiTurn) queueAi();
 }
 
-function resolvePull(who) {
+function resolvePull(who, target) {
   if (!state || !world) {
     unlockButtons();
     return;
   }
-  const result = pull(state, who);
+  const result = pull(state, who, target);
   unlockButtons();
   hud.setAim(false);
   world.setTension(0);
@@ -154,15 +165,25 @@ function resolvePull(who) {
   sync();
 }
 
-function beginPull(who) {
+// Where the revolver goes for each shooter / target.
+const POSE = {
+  player: { self: 'player', other: 'aimHouse' },
+  ai: { self: 'house', other: 'atPlayer' },
+};
+
+function beginPull(who, target = 'self') {
   if (!state || !world || acting) return false;
   if (who === 'player' && !canPull(state, 'player')) return false;
   if (who === 'ai' && !canPull(state, 'ai')) return false;
+  const aim = state.mode === 'ai' && target === 'other' ? 'other' : 'self';
   lockButtons();
-  // The ritual: revolver to the temple, hammer back, a few heartbeats, then the trigger.
-  world.setGunPose(who === 'ai' ? 'house' : 'player');
-  world.setPullCam(who === 'player');
-  if (who === 'player') hud.setAim(true);
+  // The ritual: revolver up (to a temple or across the table), hammer back,
+  // a few heartbeats, then the trigger.
+  world.setGunPose(POSE[who][aim]);
+  world.setPullCam(who === 'player' || aim === 'other');
+  // Tunnel vision whenever the gun is pointed at you.
+  if ((who === 'player' && aim === 'self') || (who === 'ai' && aim === 'other')) hud.setAim(true);
+  sync();
   world.setTension(who === 'ai' ? 0.6 : 0.7);
   world.dealer.setMood(who === 'ai' ? 'pull' : 'think');
   later(320, () => {
@@ -171,12 +192,26 @@ function beginPull(who) {
   });
   later(560, () => audio.heartbeat());
   later(who === 'ai' ? 1000 : 960, () => audio.heartbeat());
-  later(who === 'ai' ? 1350 : 1250, () => resolvePull(who));
+  later(who === 'ai' ? 1350 : 1250, () => resolvePull(who, aim));
   return true;
 }
 
 function doPull() {
-  beginPull('player');
+  beginPull('player', 'self');
+}
+
+function doShoot() {
+  if (!state || state.mode !== 'ai') return;
+  beginPull('player', 'other');
+}
+
+function doPass() {
+  if (!state || !world || acting) return;
+  if (!pass(state, 'player').ok) return;
+  audio.item();
+  world.setGunPose('table');
+  sync();
+  if (state.aiTurn) queueAi();
 }
 
 function doSpin() {
@@ -239,8 +274,24 @@ function queueAi() {
       if (state.spun && state.aiTurn) later(choice.item === ITEMS.respin ? 1500 : 640, queueAi);
       return;
     }
-    beginPull('ai');
+    if (choice.type === 'pass') {
+      pass(state, 'ai');
+      audio.item();
+      world.dealer.setMood('think');
+      sync();
+      if (state.aiTurn) later(700, queueAi);
+      return;
+    }
+    if (choice.type === 'pull') beginPull('ai', choice.target);
   });
+}
+
+// A new face at the table each match (never the same one twice running).
+function seatOpponent() {
+  const c = pickCharacter(Math.random, opponentId);
+  opponentId = c.id;
+  world.setOpponent(c);
+  hud.setOpponent(c.title);
 }
 
 function start(mode) {
@@ -254,6 +305,7 @@ function start(mode) {
   acting = false;
   pendingMode = null;
   state = createMatch(mode);
+  seatOpponent();
   hud.showGame();
   world.gun.setIndex(0, true);
   world.setGunPose('table');
@@ -275,6 +327,7 @@ function again() {
   recordedMatch = false;
   acting = false;
   resetMatch(state);
+  seatOpponent();
   world.gun.setIndex(0, true);
   world.setGunPose('table');
   hud.clearBlackout();
@@ -334,6 +387,8 @@ const hud = createHud({
   onStart: start,
   onSpin: doSpin,
   onPull: doPull,
+  onShoot: doShoot,
+  onPass: doPass,
   onItem: doItem,
   onCash: doCash,
   onFinish: (name) => { if (world) world.setFinish(name); },
@@ -369,6 +424,10 @@ document.addEventListener('keydown', (e) => {
     menu();
   } else if (isCashKey(e.code)) {
     doCash();
+  } else if (isShootKey(e.code)) {
+    doShoot();
+  } else if (isPassKey(e.code)) {
+    doPass();
   } else if (isRespinKey(e.code)) {
     if (state.playerItems.includes(ITEMS.respin)) doItem(ITEMS.respin);
   } else {
