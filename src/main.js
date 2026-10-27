@@ -126,6 +126,7 @@ function afterHit(result) {
   if (state.mode === 'ai' && state.matchOver && !recordedMatch) {
     recordedMatch = true;
     recordAiMatch(state.playerRoundWins > state.aiRoundWins);
+    buzz(state.playerRoundWins > state.aiRoundWins ? [30, 40, 30, 40, 80] : [80, 40, 120]);
   }
 }
 
@@ -518,6 +519,10 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 document.addEventListener('visibilitychange', () => {
   hidden = document.hidden;
+  // If the tab slept mid-HOUSE-turn, timers may have been throttled. Re-queue.
+  if (!hidden && state && world && state.aiTurn && !state.over && state.spun && !acting) {
+    queueAi();
+  }
 });
 
 const clock = { last: 0 };
