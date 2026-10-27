@@ -181,6 +181,12 @@ function finishHit(state, byAi, victim = byAi ? 'ai' : 'player') {
   }
 }
 
+/** Busy tracks "HOUSE is thinking" for the HUD. Never leave it true on the player's turn. */
+function syncBusy(state) {
+  if (state.mode !== 'ai' || state.over || state.matchOver || !state.aiTurn) state.busy = false;
+  else state.busy = true;
+}
+
 function passTurn(state, fromAi) {
   if (state.mode !== 'ai') return;
   if (!fromAi) {
@@ -247,10 +253,12 @@ export function pull(state, who = 'auto', target = 'self') {
   } else if (aim === 'self') {
     // Blank on yourself: nerve pays, you keep the revolver.
     state.status = byAi ? 'HOUSE SURVIVES — KEEPS THE TURN' : 'CLICK. YOU KEEP THE TURN';
+    syncBusy(state);
   } else {
     passTurn(state, byAi);
     if (!byAi && state.aiTurn) state.status = 'CLICK. MISSED — HOUSE TURN';
     if (byAi && !state.aiTurn) state.status = 'CLICK. HOUSE MISSED — YOUR TURN';
+    syncBusy(state);
   }
   return { ok: true, hit: false, byAi, target: aim };
 }
@@ -270,6 +278,7 @@ export function pass(state, who = 'player') {
   passTurn(state, who === 'ai');
   if (who === 'player') state.status = state.aiTurn ? 'YOU PASS — HOUSE HOLDS THE REVOLVER' : 'YOU PASS — HOUSE STUNNED, YOUR TURN';
   else state.status = state.aiTurn ? 'HOUSE PASSES — STILL HOUSE' : 'HOUSE PASSES IT BACK — YOUR TURN';
+  syncBusy(state);
   state.last = { type: 'pass', who };
   return { ok: true };
 }

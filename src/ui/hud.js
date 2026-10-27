@@ -119,6 +119,10 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
         <button type="button" id="nextBtn" class="primary hidden">NEXT ROUND</button>
         <button type="button" id="againBtn" class="primary hidden">PLAY AGAIN</button>
       </div>
+      <div id="endCard" class="end-card hidden" role="status" aria-live="polite">
+        <p id="endTitle" class="end-title">MATCH OVER</p>
+        <p id="endSub" class="end-sub"></p>
+      </div>
     </section>
 
     <div id="holdRing" class="hold-ring" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><circle class="fill" cx="32" cy="32" r="27" pathLength="100"/></svg><span>HOLD</span></div>
@@ -154,6 +158,9 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
   let opponent = 'HOUSE';
   const nextBtn = $('nextBtn');
   const againBtn = $('againBtn');
+  const endCard = $('endCard');
+  const endTitle = $('endTitle');
+  const endSub = $('endSub');
   const muteBtn = $('muteBtn');
   const textBtn = $('textBtn');
   const hint = $('hint');
@@ -494,12 +501,49 @@ export function createHud({ onStart, onSpin, onPull, onShoot, onPass, onItem, on
       passBtn.classList.toggle('hidden', !passable);
       nextBtn.classList.toggle('hidden', !(state.over && ai && !state.matchOver));
       againBtn.classList.toggle('hidden', !(state.over && (!ai || state.matchOver)));
+      if (state.matchOver && ai) againBtn.textContent = 'REMATCH';
+      else if (state.winner === 'cash') againBtn.textContent = 'PLAY AGAIN';
+      else againBtn.textContent = 'PLAY AGAIN';
+      nextBtn.textContent = 'NEXT ROUND';
 
-      hint.textContent = !playable
-        ? ''
-        : !state.spun ? 'or swipe the table to spin'
-          : ai ? 'survive your own shot and you keep the revolver'
-            : 'or press and hold the table to pull';
+      // Clear win / lose / cash banner so a finished match is obvious on a phone.
+      if (endCard) {
+        const showEnd = Boolean(state.over && (!ai || state.matchOver || state.winner === 'cash'));
+        const showRound = Boolean(ai && state.over && !state.matchOver);
+        endCard.classList.toggle('hidden', !(showEnd || showRound));
+        endCard.classList.toggle('win', false);
+        endCard.classList.toggle('lose', false);
+        if (ai && state.matchOver) {
+          const youWon = state.playerRoundWins > state.aiRoundWins;
+          const split = state.playerRoundWins === state.aiRoundWins;
+          endTitle.textContent = split ? 'MATCH SPLIT' : (youWon ? 'YOU WIN' : 'HOUSE WINS');
+          endSub.textContent = `Final ${state.playerRoundWins}–${state.aiRoundWins} · tap REMATCH`;
+          endCard.classList.toggle('win', youWon && !split);
+          endCard.classList.toggle('lose', !youWon && !split);
+        } else if (ai && state.over) {
+          const youRound = state.winner === 'player';
+          endTitle.textContent = youRound ? 'ROUND YOURS' : 'ROUND THEIRS';
+          endSub.textContent = `${state.playerRoundWins}–${state.aiRoundWins} · tap NEXT ROUND`;
+          endCard.classList.toggle('win', youRound);
+          endCard.classList.toggle('lose', !youRound);
+        } else if (state.winner === 'cash') {
+          endTitle.textContent = 'CASHED OUT';
+          endSub.textContent = `Banked $${state.cashed || state.pot || 0}`;
+          endCard.classList.add('win');
+        } else if (state.over) {
+          endTitle.textContent = 'OUT';
+          endSub.textContent = state.status || 'Tap PLAY AGAIN';
+          endCard.classList.add('lose');
+        }
+      }
+
+      hint.textContent = done
+        ? (state.matchOver ? 'rematch or menu' : (ai ? 'next round when ready' : 'play again or menu'))
+        : !playable
+          ? ''
+          : !state.spun ? 'or swipe the table to spin'
+            : ai ? 'survive your own shot and you keep the revolver'
+              : 'or press and hold the table to pull';
 
       hud.setAttribute('aria-busy', ai && state.aiTurn && !state.over ? 'true' : 'false');
       const spoken = tableLiveText(state, opponent);
